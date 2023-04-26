@@ -10,11 +10,19 @@
 # 尚未確認實作 項次
 # 61~72，74，78~79
 # 80~91
+# 96
+# 108
 # 確認是否以root身分執行
 if [[ $EUID -ne 0 ]]; then
     echo "This script MUST be run as root!!"
     exit 1
 fi
+
+# Log異常檢視
+FCB_LOG='/root/FCB_LOG.txt'
+FCB_LOG_ERROR='/root/FCB_LOG_ERROR.txt'
+touch ${FCB_LOG}
+touch ${FCB_LOG_ERROR}
 
 # 磁碟與檔案系統
 echo "=========================="
@@ -282,13 +290,94 @@ cut -f3 -d":" /etc/passwd | sort -n | uniq -c | while read x ; do
     fi
 done
 
-
-
-
-# 判斷服務狀態的 Bash 指令稿
-IS_ACT=`systemctl is-active xxx.service`
-if [ "$IS_ACT" == "active" ]; then
-  echo "xxx is active."
+# remove xinetd package
+XinetdService='xinetd'
+IS_STATUS="systemctl status ${XinetdService}"
+if [ "${IS_STATUS}" == "Unit ${XinetdService}.service could not be found." ]; then
+    echo "${XinetdService} service not installed on Red Hat Linux 9" >> ${FCB_LOG}
 else
-  echo "xxx is not active." >> /root/FCB_log.txt
+    systemctl stop ${XinetdService}
+    systemctl disable ${XinetdService}
+    dnf remove -y ${XinetdService}
+    echo "${XinetdService} Package has been removed" >> ${FCB_LOG}
 fi
+
+# 93 chrony校時設定
+
+# disable rsyncd service
+RsyncdService='rsyncd'
+IS_ACTIVE="systemctl is-active ${RsyncdService}.service"
+if [ "$IS_ACTIVE" == "inactive" ]; then
+    echo "${RsyncdService} is not active." >> ${FCB_LOG}
+else 
+    systemctl stop ${RsyncdService}
+    systemctl --now disable ${RsyncdService}
+    echo "Closed ${RsyncdService} service." >> ${FCB_LOG}
+fi
+
+# disable avahi-daemon service
+AvahiService='avahi-daemon'
+IS_ACTIVE="systemctl is-active ${AvahiService}.service"
+if [ "$IS_ACTIVE" == "inactive" ]; then
+    echo "Closed ${AvahiService} service."
+else
+    echo "${AvahiService} is not active." >> ${FCB_LOG}
+    systemctl stop ${AvahiService}
+    systemctl --now disable ${AvahiService}
+fi
+
+# disable snmp service
+systemctl stop snmpd
+systemctl --now disable snmpd
+
+# disable Squid service
+systemctl stop squid
+systemctl --now disable squid
+
+# disable Samba service
+systemctl stop smb
+systemctl --now disable smb
+
+# disable FTP service
+systemctl stop vsftpd
+systemctl --now disable vsftpd
+
+# disable NIS service
+systemctl stop ypserv
+systemctl --now disable ypserv
+
+# enable kdump service
+systemctl start kdump.service
+systemctl --now enable kdump.service
+
+# remove ypbind package
+systemctl stop ypbind
+systemctl --now disable ypbind
+dnf remove -y ypbind
+
+# remove telnet package
+systemctl stop telnet.socket
+systemctl --now disable telnet.socket
+dnf remove -y telnet-server
+
+# remove tftp package
+dnf remove -y tftp-server
+
+# 更新套件後移除舊版本元件
+sed -i '$a clean_requirements_on_remove=True' /etc/yum.conf
+sed -i '$a clean_requirements_on_remove=True' /etc/dnf.conf
+
+# 網路設定
+echo "=========================="
+echo "===== NETWORK Config ====="
+echo "=========================="
+
+# IP轉送
+
+# 所有網路介面禁止傳送ICMP重新導入封包
+sed -i '$a net.ipv4.conf.all.send_redirects=0' /etc/sysctl.conf
+sed -i '$a net.ipv4.conf.all.send_redirects=0' /etc/sysctl.d/*.conf
+sysctl -w net.ipv4.conf.all.send_redirects=0
+sysctl -w net.ipv4.route.flush=1
+
+# 110 預設網路介面禁止
