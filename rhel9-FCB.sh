@@ -8,10 +8,12 @@
 #   v1.0
 
 # 尚未確認實作 項次
+# 08
 # 61~72，74，78~79
 # 80~91
 # 96
 # 108
+
 # 確認是否以root身分執行
 if [[ $EUID -ne 0 ]]; then
     echo "This script MUST be run as root!!"
@@ -19,35 +21,41 @@ if [[ $EUID -ne 0 ]]; then
 fi
 
 # Log異常檢視
-FCB_LOG='/root/FCB_LOG.txt'
+# 符合FCB Log
+FCB_LOG_SUCCESS='/root/FCB_LOG_SUCCESS.txt'
+# 錯誤需修正檢視Log
 FCB_LOG_ERROR='/root/FCB_LOG_ERROR.txt'
-touch ${FCB_LOG}
+# 執行異常錯誤
+FCB_LOG_FAILED='/root/FCB_LOG_FAILED.txt'
+touch ${FCB_LOG_SUCCESS}
 touch ${FCB_LOG_ERROR}
+touch ${FCB_LOG_FAILED}
 
 # 磁碟與檔案系統
 echo "=========================="
 echo "== DISK and File System =="
 echo "=========================="
 
-# cramfs檔案系統 停用
+# 01 crams檔案系統 停用
 
-#cat <<EOF | sudo tee /etc/modprobe.d/cramfs.conf
-#install cramfs /bin/true
-#blacklist cramfs
-#EOF
+# 02 squashs檔案系統 停用
 
-#rmmod cramfs
+# 03 udf檔案系統 停用
 
-# squashfs檔案系統 停用
+# 04 設定/tmp目錄之檔案系統
+#sed -i '$a tmpfs\t\t\t/tmp\t\t\ttmpfs\tdefaults,rw,nosuid,nodev,noexec,relatime\t0 0' /etc/fstab
+#systemctl unmask tmp.mount
+#systemctl enable tmp.mount
+## sed -i 's/Options=mode=1777,strictatime/Options=mode=1777,strictatime,noexec,nodev,nosuid/g' /etc/systemd/system/local-fs.target.wants/tmp.mount
+#sed -i 's/\(^Options=mode=1777,strictatime\)/\1,noexec,nodev,nosuid/' /etc/systemd/system/local-fs.target.wants/tmp.mount
 
-# udf檔案系統 停用
+# 05 設定/tmp目錄之nodev選項 啟用
 
-# 設定/tmp目錄之檔案系統
-sed -i '$a tmpfs /tmp tmpfs defaults,rw,nosuid,nodev,noexec,relatime 0 0' /etc/fstab
-systemctl unmask tmp.mount
-systemctl enable tmp.mount
-sed -i 's/Options=mode=1777,strictatime/Options=mode=1777,strictatime,noexec,nodev,nosuid/g' /etc/systemd/system/local-fs.target.wants/tmp.mount
+# 06 設定/tmp目錄之nosuid選項 啟用
 
+# 07 設定/tmp目錄之noexec選項 啟用
+
+# 08 設定/var目錄之檔案系統 使用獨立分割磁區或邏輯磁區
 
 echo "磁碟與檔案系統 設定成功。"
 
@@ -63,7 +71,7 @@ elif grep -q "gpgcheck=0" /etc/yum.conf; then
     sed -i 's/gpgcheck=0/gpgcheck=1/g' /etc/yum.conf
 else
     echo "/etc/yum.conf GPG簽章驗證「不符合FCB規定」"
-    echo "/etc/yum.conf GPG簽章驗證Failed!!" >> /root/FCB_log.txt
+    echo "/etc/yum.conf GPG簽章驗證Failed!!" >> ${FCB_LOG_FAILED}
 fi
 
 if grep -q "gpgcheck=1" /etc/dnf/dnf.conf; then
@@ -71,7 +79,7 @@ if grep -q "gpgcheck=1" /etc/dnf/dnf.conf; then
 elif grep -q "gpgcheck=0" /etc/dnf.conf; then
     sed -i 's/gpgcheck=0/gpgcheck=1/g' /etc/dnf.conf
 else
-    echo "/etc/dnf/dnf.conf GPG簽章驗證「不符合FCB規定」" >> /root/FCB_log.txt
+    echo "/etc/dnf/dnf.conf GPG簽章驗證「不符合FCB規定」" >> ${FCB_LOG_FAILED}
 fi
 
 # 設定sudo指令使用pty
@@ -146,7 +154,7 @@ chmod 000 /etc/gshadow-
 # 檢查PATH中是否包含 . 或 .. 或路徑開頭不是 /
 echo "Check PATH"
 if [[ "$PATH" == *.:* ]] || [[ "$PATH" == *..:* ]] || [[ "$PATH" != /*:* ]]; then
-    echo "Error: PATH contains invalid entries" >> /root/FCB_log.txt
+    echo "Error: PATH contains invalid entries" >> ${FCB_LOG_ERROR}
     exit 1
 fi
 
@@ -294,12 +302,12 @@ done
 XinetdService='xinetd'
 IS_STATUS="systemctl status ${XinetdService}"
 if [ "${IS_STATUS}" == "Unit ${XinetdService}.service could not be found." ]; then
-    echo "${XinetdService} service not installed on Red Hat Linux 9" >> ${FCB_LOG}
+    echo "${XinetdService} service not installed on Red Hat Linux 9" >> ${FCB_LOG_SUCCESS}
 else
     systemctl stop ${XinetdService}
     systemctl disable ${XinetdService}
     dnf remove -y ${XinetdService}
-    echo "${XinetdService} Package has been removed" >> ${FCB_LOG}
+    echo "${XinetdService} Package has been removed" >> ${FCB_LOG_SUCCESS}
 fi
 
 # 93 chrony校時設定
@@ -308,11 +316,11 @@ fi
 RsyncdService='rsyncd'
 IS_ACTIVE="systemctl is-active ${RsyncdService}.service"
 if [ "$IS_ACTIVE" == "inactive" ]; then
-    echo "${RsyncdService} is not active." >> ${FCB_LOG}
+    echo "${RsyncdService} is not active." >> ${FCB_LOG_SUCCESS}
 else 
     systemctl stop ${RsyncdService}
     systemctl --now disable ${RsyncdService}
-    echo "Closed ${RsyncdService} service." >> ${FCB_LOG}
+    echo "Closed ${RsyncdService} service." >> ${FCB_LOG_SUCCESS}
 fi
 
 # disable avahi-daemon service
@@ -321,9 +329,9 @@ IS_ACTIVE="systemctl is-active ${AvahiService}.service"
 if [ "$IS_ACTIVE" == "inactive" ]; then
     echo "Closed ${AvahiService} service."
 else
-    echo "${AvahiService} is not active." >> ${FCB_LOG}
     systemctl stop ${AvahiService}
     systemctl --now disable ${AvahiService}
+    echo "${AvahiService} is not active." >> ${FCB_LOG_SUCCESS}
 fi
 
 # disable snmp service
@@ -514,4 +522,34 @@ dnf install audit audit-libs
 systemctl start auditd
 systemctl --now enable auditd
 
-# 134 稽核
+# 134 稽核auditd服務啟動前之程序
+sed -i 's/\(^GRUB_CMDLINE_LINUX=".*\)\("\)/\1 audit=1\2/' /etc/default/grub
+
+# 135 稽核待辦事項數量限制
+sed -i 's/\(^GRUB_CMDLINE_LINUX=".*\)\("\)/\1 audit_backlog_limit=8192\2/' /etc/default/grub
+
+grub2-mkconfig -o /boot/grub2/grub.cfg
+
+# 136 稽核處理失敗時通知系統管理者
+sed -i '$a postmaster:\troot' /etc/aliases
+
+# 137 稽核日誌檔案所有權
+grep -iw log_file /etc/audit/auditd.conf | awk '{print $3}' | xargs -I {} chown root:root {}
+
+# 138 稽核日誌檔案權限
+grep -iw log_file /etc/audit/auditd.conf | awk '{print $3}' | xargs -I {} chmod 600 {}
+
+# 139 稽核日誌目錄所有權
+grep -iw log_file /etc/audit/auditd.conf | awk '{print $3}' | sed 's,/[^/]*$,,' | uniq | xargs -I {} chown root:root {}
+
+# 140 稽核日誌目錄權限
+grep -iw log_file /etc/audit/auditd.conf | awk '{print $3}' | sed 's,/[^/]*$,,' | uniq | xargs -I {} chmod 700 {}
+
+# 141 稽核規則檔案權限
+chmod 600 /etc/audit/rules.d/audit.rules
+
+# 142 稽核設定檔案權限
+chmod 640 /etc/audit/auditd.conf
+
+# 143 稽核工具權限
+
