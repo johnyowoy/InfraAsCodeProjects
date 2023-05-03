@@ -553,3 +553,11 @@ chmod 640 /etc/audit/auditd.conf
 
 # 143 稽核工具權限
 
+# 144 稽核工具所有權
+
+# 145 保護稽核工具
+
+# 146 稽核日誌檔案大小上限
+sed -i 's/max_log_file = 8/max_log_file = 32/g' /etc/audit/auditd.conf
+sed -i 's/max_log_file_action = ROTATE/max_log_file_action = keep_logs/g' /etc/audit/auditd.conf
+
