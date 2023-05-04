@@ -1,4 +1,5 @@
 #!/bin/bash
+#!/bin/bash
 # Program
 #   Red Hat Enterprise Linux 9 Systemctl Security Check ShellScript
 #   GCB政府組態基準-Red Hat Enterprise Linux 9
@@ -57,6 +58,27 @@ echo "=========================="
 
 # 08 設定/var目錄之檔案系統 使用獨立分割磁區或邏輯磁區
 
+# 09 設定/var/tmp目錄之檔案系統 使用獨立分割磁區或邏輯磁區
+
+# 10 設定/var/tmp目錄之nodev選項 啟用
+
+# 11 設定/var/tmp目錄之nosuid選項 啟用
+
+# 12 設定/var/tmp目錄之noexe選項 啟用
+
+# 13 設定/var/log目錄之檔案系統 使用獨立分割磁區或邏輯磁區
+
+# 30 autofs服務 停用
+systemctl --now disable autofs
+
+# 31 USB儲存裝置 停用
+touch /etc/modprobe.d/usb-storage.conf
+echo "# disable usb storage" > /etc/modprobe.d/usb-storage.conf
+sed -i '$a install usb-storage /bin/true' /etc/modprobe.d/usb-storage.conf
+sed -i '$a blacklist usb-storage' /etc/modprobe.d/usb-storage.conf
+rmmod usb-storage
+echo "31 disable usb-storage" >> ${FCB_LOG_SUCCESS}
+
 echo "磁碟與檔案系統 設定成功。"
 
 # 系統設定與維護
@@ -64,27 +86,44 @@ echo "==================================="
 echo "== System Config and Maintenance =="
 echo "==================================="
 
-# GPG簽章驗證
+# 32 GPG簽章驗證
 if grep -q "gpgcheck=1" /etc/yum.conf; then
-    echo "/etc/yum.conf GPG簽章驗證OK!"
+    echo "/etc/yum.conf GPG簽章驗證OK!" >> ${FCB_LOG_SUCCESS}
 elif grep -q "gpgcheck=0" /etc/yum.conf; then
     sed -i 's/gpgcheck=0/gpgcheck=1/g' /etc/yum.conf
+    echo "/etc/yum.conf 已修改 GPG簽章驗證OK!" >> ${FCB_LOG_SUCCESS}
 else
-    echo "/etc/yum.conf GPG簽章驗證「不符合FCB規定」"
-    echo "/etc/yum.conf GPG簽章驗證Failed!!" >> ${FCB_LOG_FAILED}
+    echo "/etc/yum.conf GPG簽章驗證「不符合FCB規定」" >> ${FCB_LOG_FAILED}
 fi
 
 if grep -q "gpgcheck=1" /etc/dnf/dnf.conf; then
-    echo "/etc/dnf/dnf.conf GPG簽章驗證OK!"
+    echo "/etc/dnf/dnf.conf GPG簽章驗證OK!" >> ${FCB_LOG_SUCCESS}
 elif grep -q "gpgcheck=0" /etc/dnf.conf; then
     sed -i 's/gpgcheck=0/gpgcheck=1/g' /etc/dnf.conf
+    echo "/etc/yum.conf 已修改 GPG簽章驗證OK!" >> ${FCB_LOG_SUCCESS}
 else
     echo "/etc/dnf/dnf.conf GPG簽章驗證「不符合FCB規定」" >> ${FCB_LOG_FAILED}
 fi
 
-# 設定sudo指令使用pty
+# 33 安裝sudo套件
+dnf install -y sudo
+
+# 34 設定sudo指令使用pty
 sed -i '$a ##設定sudo指令使用pty' /etc/sudoers
 sed -i '$a Defaults use_pty' /etc/sudoers
+
+# 35 sudo自訂義日誌檔案 啟用
+sed -i '$a Defaults logfile="sudo.log"' /etc/sudoers
+
+# 36 安裝AIDE套件
+dnf install -y aide
+aide --init
+mv /var/lib/aide/aide.db.new.gz /var/lib/aide/aide.db.gz
+
+# 37 每天定期檢查檔案系統完整性
+touch /var/spool/cron/root
+chmod 600 root
+
 
 # 開機載入程式設定檔之所有權
 # 這項原則設定決定開機載入程式(GRUB)設定檔之擁有者與群組
@@ -559,5 +598,51 @@ chmod 640 /etc/audit/auditd.conf
 
 # 146 稽核日誌檔案大小上限
 sed -i 's/max_log_file = 8/max_log_file = 32/g' /etc/audit/auditd.conf
+
+# 147 稽核日誌達到其檔案大小上限之行為
 sed -i 's/max_log_file_action = ROTATE/max_log_file_action = keep_logs/g' /etc/audit/auditd.conf
+
+# 148 紀錄系統管理者活動 啟用
+sed -i '$a -w /etc/sudoers -p wa -k scope' /etc/audid/rules.d/audit.rules
+sed -i '$a -w /etc/sudoers.d/ -p wa -k scope' /etc/audid/rules.d/audit.rules
+
+# 149 紀錄變更登入與登出資訊事件 啟用
+sed -i '$a -w /var/run/faillock/ -p wa -k logins' /etc/audid/rules.d/audit.rules
+sed -i '$a -w /var/log/lastlog -p wa -k logins' /etc/audid/rules.d/audit.rules
+
+# 150 紀錄會談啟始資訊 啟用
+sed -i '$a -w /var/run/utmp -p wa -k session' /etc/audid/rules.d/audit.rules
+sed -i '$a -w /var/log/wtmp -p wa -k logins' /etc/audid/rules.d/audit.rules
+sed -i '$a -w /var/log/btmp -p wa -k logins' /etc/audid/rules.d/audit.rules
+
+# 151 紀錄變更日期與時間事件 啟用
+sed -i '$a -a always,exit -F arch=b64 -S adjtimex -S settimeofday -k time-change' /etc/audid/rules.d/audit.rules
+sed -i '$a -a always,exit -F arch=b32 -S adjtimex -S settimeofday -S stime -k time-change' /etc/audid/rules.d/audit.rules
+sed -i '$a -a always,exit -F arch=b64 -S clock_settime -k time-change' /etc/audid/rules.d/audit.rules
+sed -i '$a -a always,exit -F arch=b32 -S clock_settime -k time-change' /etc/audid/rules.d/audit.rules
+sed -i '$a -w /etc/localtime -p wa -k time-change' /etc/audid/rules.d/audit.rules
+
+# 152 紀錄變更系統強制存取控制事件 啟用
+sed -i '$a -w /etc/selinux/ -p wa -k MAC-policy' /etc/audid/rules.d/audit.rules
+sed -i '$a -w /usr/share/selinux/ -p wa -k MAC-policy' /etc/audid/rules.d/audit.rules
+
+# 153 紀錄變更系統網路環境事件 啟用
+sed -i '$a -a always,exit -F arch=b64 -S sethostname -S setdomainname -k system-locale' /etc/audid/rules.d/audit.rules
+sed -i '$a -a always,exit -F arch=b32 -S sethostname -S setdomainname -k system-locale' /etc/audid/rules.d/audit.rules
+sed -i '$a -w /etc/issue -p wa -k system-locale' /etc/audid/rules.d/audit.rules
+sed -i '$a -w /etc/issue.net -p wa -k system-locale' /etc/audid/rules.d/audit.rules
+sed -i '$a -w /etc/hosts -p wa -k system-locale' /etc/audid/rules.d/audit.rules
+sed -i '$a -w /etc/sysconfig/network-scripts/ -p wa -k system-locale' /etc/audid/rules.d/audit.rules
+
+# 154 紀錄變更自主存取控制權限事件 啟用
+sed -i '$a -a always,exit -F arch=b64 -S chmod -S fchmod -S fchmodat -F auid>=1000 -F auid!=4294967295 -k perm_mod' /etc/audid/rules.d/audit.rules
+sed -i '$a -a always,exit -F arch=b32 -S chmod -S fchmod -S fchmodat -F auid>=1000 -F auid!=4294967295 -k perm_mod' /etc/audid/rules.d/audit.rules
+sed -i '$a -a always,exit -F arch=b64 -S chown -S fchown -S fchownat -S lchown -F auid>=1000 -F auid!=4294967295 -k perm_mod' /etc/audid/rules.d/audit.rules
+sed -i '$a -a always,exit -F arch=b32 -S chown -S fchown -S fchownat -S lchown -F auid>=1000 -F auid!=4294967295 -k perm_mod' /etc/audid/rules.d/audit.rules
+sed -i '$a -a always,exit -F arch=b64 -S setxattr -S lsetxattr -S fsetxattr -S removexattr -S lremovexattr -S fremovexattr -F auid>=1000 -F auid!=4294967295 -k perm_mod' /etc/audid/rules.d/audit.rules
+sed -i '$a -a always,exit -F arch=b32 -S setxattr -S lsetxattr -S fsetxattr -S removexattr -S lremovexattr -S fremovexattr -F auid>=1000 -F auid!=4294967295 -k perm_mod' /etc/audid/rules.d/audit.rules
+
+sed -i '$a ' /etc/audid/rules.d/audit.rules
+
+# 155 紀錄不成功之未經授權檔案存取 啟用
 
