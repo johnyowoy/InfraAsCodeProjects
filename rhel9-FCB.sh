@@ -204,6 +204,10 @@ grep '^\+:' /etc/shadow
 # /etc/group檔案行首是否允許存在「+」符號
 grep '^\+:' /etc/group
 
+# 79 使用者家目錄權限
+# 取得所有使用者清單，nologin /bin/false, root不用顯示
+cat /etc/passwd | cut -d ':' -f 1,7 | grep -v 'halt\|sync\|shutdown\|nologin\|root\|\/bin\/false' | cut -d ':' -f 1
+
 # 使用者家目錄權限
 # 使用者家目錄是系統預設之使用者主目錄，目錄下存放使用者之環境設定與個人檔案，因此任何使用者皆不應具有可寫入其他使用者家目錄之權限
 # 使用者家目錄應限制群組不具寫入(g-w)權限，其他使用者不具讀取、寫入及執行(o-rwx)權限，避免遭未經授權存取與竊取資料
@@ -602,47 +606,58 @@ sed -i 's/max_log_file = 8/max_log_file = 32/g' /etc/audit/auditd.conf
 # 147 稽核日誌達到其檔案大小上限之行為
 sed -i 's/max_log_file_action = ROTATE/max_log_file_action = keep_logs/g' /etc/audit/auditd.conf
 
+auditrules='/etc/audid/rules.d/audit.rules'
+
 # 148 紀錄系統管理者活動 啟用
-sed -i '$a -w /etc/sudoers -p wa -k scope' /etc/audid/rules.d/audit.rules
-sed -i '$a -w /etc/sudoers.d/ -p wa -k scope' /etc/audid/rules.d/audit.rules
+sed -i '$a -w /etc/sudoers -p wa -k scope' ${auditrules}
+sed -i '$a -w /etc/sudoers.d/ -p wa -k scope' ${auditrules}
 
 # 149 紀錄變更登入與登出資訊事件 啟用
-sed -i '$a -w /var/run/faillock/ -p wa -k logins' /etc/audid/rules.d/audit.rules
-sed -i '$a -w /var/log/lastlog -p wa -k logins' /etc/audid/rules.d/audit.rules
+sed -i '$a -w /var/run/faillock/ -p wa -k logins' ${auditrules}
+sed -i '$a -w /var/log/lastlog -p wa -k logins' ${auditrules}
 
 # 150 紀錄會談啟始資訊 啟用
-sed -i '$a -w /var/run/utmp -p wa -k session' /etc/audid/rules.d/audit.rules
-sed -i '$a -w /var/log/wtmp -p wa -k logins' /etc/audid/rules.d/audit.rules
-sed -i '$a -w /var/log/btmp -p wa -k logins' /etc/audid/rules.d/audit.rules
+sed -i '$a -w /var/run/utmp -p wa -k session' ${auditrules}
+sed -i '$a -w /var/log/wtmp -p wa -k logins' ${auditrules}
+sed -i '$a -w /var/log/btmp -p wa -k logins' ${auditrules}
 
 # 151 紀錄變更日期與時間事件 啟用
-sed -i '$a -a always,exit -F arch=b64 -S adjtimex -S settimeofday -k time-change' /etc/audid/rules.d/audit.rules
-sed -i '$a -a always,exit -F arch=b32 -S adjtimex -S settimeofday -S stime -k time-change' /etc/audid/rules.d/audit.rules
-sed -i '$a -a always,exit -F arch=b64 -S clock_settime -k time-change' /etc/audid/rules.d/audit.rules
-sed -i '$a -a always,exit -F arch=b32 -S clock_settime -k time-change' /etc/audid/rules.d/audit.rules
-sed -i '$a -w /etc/localtime -p wa -k time-change' /etc/audid/rules.d/audit.rules
+sed -i '$a -a always,exit -F arch=b64 -S adjtimex -S settimeofday -k time-change' ${auditrules}
+sed -i '$a -a always,exit -F arch=b32 -S adjtimex -S settimeofday -S stime -k time-change' ${auditrules}
+sed -i '$a -a always,exit -F arch=b64 -S clock_settime -k time-change' ${auditrules}
+sed -i '$a -a always,exit -F arch=b32 -S clock_settime -k time-change' ${auditrules}
+sed -i '$a -w /etc/localtime -p wa -k time-change' ${auditrules}
 
 # 152 紀錄變更系統強制存取控制事件 啟用
-sed -i '$a -w /etc/selinux/ -p wa -k MAC-policy' /etc/audid/rules.d/audit.rules
-sed -i '$a -w /usr/share/selinux/ -p wa -k MAC-policy' /etc/audid/rules.d/audit.rules
+sed -i '$a -w /etc/selinux/ -p wa -k MAC-policy' ${auditrules}
+sed -i '$a -w /usr/share/selinux/ -p wa -k MAC-policy' ${auditrules}
 
 # 153 紀錄變更系統網路環境事件 啟用
-sed -i '$a -a always,exit -F arch=b64 -S sethostname -S setdomainname -k system-locale' /etc/audid/rules.d/audit.rules
-sed -i '$a -a always,exit -F arch=b32 -S sethostname -S setdomainname -k system-locale' /etc/audid/rules.d/audit.rules
-sed -i '$a -w /etc/issue -p wa -k system-locale' /etc/audid/rules.d/audit.rules
-sed -i '$a -w /etc/issue.net -p wa -k system-locale' /etc/audid/rules.d/audit.rules
-sed -i '$a -w /etc/hosts -p wa -k system-locale' /etc/audid/rules.d/audit.rules
-sed -i '$a -w /etc/sysconfig/network-scripts/ -p wa -k system-locale' /etc/audid/rules.d/audit.rules
+sed -i '$a -a always,exit -F arch=b64 -S sethostname -S setdomainname -k system-locale' ${auditrules}
+sed -i '$a -a always,exit -F arch=b32 -S sethostname -S setdomainname -k system-locale' ${auditrules}
+sed -i '$a -w /etc/issue -p wa -k system-locale' ${auditrules}
+sed -i '$a -w /etc/issue.net -p wa -k system-locale' ${auditrules}
+sed -i '$a -w /etc/hosts -p wa -k system-locale' ${auditrules}
+sed -i '$a -w /etc/sysconfig/network-scripts/ -p wa -k system-locale' ${auditrules}
 
 # 154 紀錄變更自主存取控制權限事件 啟用
-sed -i '$a -a always,exit -F arch=b64 -S chmod -S fchmod -S fchmodat -F auid>=1000 -F auid!=4294967295 -k perm_mod' /etc/audid/rules.d/audit.rules
-sed -i '$a -a always,exit -F arch=b32 -S chmod -S fchmod -S fchmodat -F auid>=1000 -F auid!=4294967295 -k perm_mod' /etc/audid/rules.d/audit.rules
-sed -i '$a -a always,exit -F arch=b64 -S chown -S fchown -S fchownat -S lchown -F auid>=1000 -F auid!=4294967295 -k perm_mod' /etc/audid/rules.d/audit.rules
-sed -i '$a -a always,exit -F arch=b32 -S chown -S fchown -S fchownat -S lchown -F auid>=1000 -F auid!=4294967295 -k perm_mod' /etc/audid/rules.d/audit.rules
-sed -i '$a -a always,exit -F arch=b64 -S setxattr -S lsetxattr -S fsetxattr -S removexattr -S lremovexattr -S fremovexattr -F auid>=1000 -F auid!=4294967295 -k perm_mod' /etc/audid/rules.d/audit.rules
-sed -i '$a -a always,exit -F arch=b32 -S setxattr -S lsetxattr -S fsetxattr -S removexattr -S lremovexattr -S fremovexattr -F auid>=1000 -F auid!=4294967295 -k perm_mod' /etc/audid/rules.d/audit.rules
+sed -i '$a -a always,exit -F arch=b64 -S chmod -S fchmod -S fchmodat -F auid>=1000 -F auid!=4294967295 -k perm_mod' ${auditrules}
+sed -i '$a -a always,exit -F arch=b32 -S chmod -S fchmod -S fchmodat -F auid>=1000 -F auid!=4294967295 -k perm_mod' ${auditrules}
+sed -i '$a -a always,exit -F arch=b64 -S chown -S fchown -S fchownat -S lchown -F auid>=1000 -F auid!=4294967295 -k perm_mod' ${auditrules}
+sed -i '$a -a always,exit -F arch=b32 -S chown -S fchown -S fchownat -S lchown -F auid>=1000 -F auid!=4294967295 -k perm_mod' ${auditrules}
+sed -i '$a -a always,exit -F arch=b64 -S setxattr -S lsetxattr -S fsetxattr -S removexattr -S lremovexattr -S fremovexattr -F auid>=1000 -F auid!=4294967295 -k perm_mod' ${auditrules}
+sed -i '$a -a always,exit -F arch=b32 -S setxattr -S lsetxattr -S fsetxattr -S removexattr -S lremovexattr -S fremovexattr -F auid>=1000 -F auid!=4294967295 -k perm_mod' ${auditrules}
 
-sed -i '$a ' /etc/audid/rules.d/audit.rules
+# =============================================
 
 # 155 紀錄不成功之未經授權檔案存取 啟用
+sed -i '$a -a always,exit -F arch=b64 -S creat -S open -S openat -S truncate -S ftruncate -F exit=-EACCES -F auid>=1000 -F auid!=4294967295 -k access' ${auditrules}
+sed -i '$a -a always,exit -F arch=b32 -S creat -S open -S openat -S truncate -S ftruncate -F exit=-EACCES -F auid>=1000 -F auid!=4294967295 -k access' ${auditrules}
+sed -i '$a -a always,exit -F arch=b64 -S creat -S open -S openat -S truncate -S ftruncate -F exit=-EPERM -F auid>=1000 -F auid!=4294967295 -k access' ${auditrules}
+sed -i '$a -a always,exit -F arch=b32 -S creat -S open -S openat -S truncate -S ftruncate -F exit=-EPERM -F auid>=1000 -F auid!=4294967295 -k access' ${auditrules}
+sed -i '$a ' ${auditrules}
 
+# 156 紀錄變更使用者或群組資訊事件 啟用
+
+
+sed -i '$a ' ${auditrules}
