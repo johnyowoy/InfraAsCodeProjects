@@ -658,6 +658,57 @@ sed -i '$a -a always,exit -F arch=b32 -S creat -S open -S openat -S truncate -S 
 sed -i '$a ' ${auditrules}
 
 # 156 紀錄變更使用者或群組資訊事件 啟用
+sed -i '$a -w /etc/group -p wa -k identity' ${auditrules}
+sed -i '$a -w /etc/passwd -p wa -k identity' ${auditrules}
+sed -i '$a -w /etc/gshadow -p wa -k identity' ${auditrules}
+sed -i '$a -w /etc/shadow -p wa -k identity' ${auditrules}
+sed -i '$a -w /etc/security/opasswd -p wa -k identity' ${auditrules}
 
+# 157 紀錄變更檔案系統掛載事件
+sed -i '$a -a always,exit -F arch=b64 -S mount -F auid>=1000 -F auid!=4294967295 -k mounts' ${auditrules}
+sed -i '$a -a always,exit -F arch=b32 -S mount -F auid>=1000 -F auid!=4294967295 -k mounts' ${auditrules}
+
+# 158 紀錄特權指令使用情形 啟用
+
+# 159 紀錄檔案刪除事件 啟用
+sed -i '$a -a always,exit -F arch=b64 -S unlink -S unlinkat -S rename -S renameat -F auid>=1000 -F auid!=4294967295 -k delete' ${auditrules}
+sed -i '$a -a always,exit -F arch=b32 -S unlink -S unlinkat -S rename -S renameat -F auid>=1000 -F auid!=4294967295 -k delete' ${auditrules}
+
+# 160 紀錄核心模組掛載與卸載事件 啟用
+sed -i '$a -w /sbin/insmod -p x -k modules' ${auditrules}
+sed -i '$a -w /sbin/rmmod -p x -k modules' ${auditrules}
+sed -i '$a -w /sbin/modprobe -p x -k modules' ${auditrules}
+sed -i '$a -a always,exit -F arch=b64 -S init_module -S delete_module -k modules' ${auditrules}
+
+# 161 紀錄系統管理者活動日誌變更 啟用
+
+# 162 紀錄chcon指令使用情形 啟用
+sed -i '$a -a always,exit -F path=/usr/bin/chcon -F perm=x -F auid>=1000 -F auid!=4294967295 -k perm_chng' ${auditrules}
+
+# 163 紀錄ssh-agent 程序使用情形 啟用
+sed -i '$a -a always,exit -F path=/usr/bin/sshagent -F perm=x -F auid>=1000 -F auid!=4294967295 -k privilegedssh' ${auditrules}
+
+# 164 紀錄unix_updat 啟用
+sed -i '$a -a always,exit -F  path=/sbin/unix_update -F perm=x -F auid>=1000 -F auid!=4294967295 -k privileged-unix-updat' ${auditrules}
+
+# 165 紀錄setfacl指令使用情形 啟用
+sed -i '$a -a always,exit -F path=/usr/bin/setfacl -F perm=x -F auid>=1000 -F auid!=4294967295 -k perm_chng' ${auditrules}
+
+# 166 紀錄finit_module指令使用情形 啟用
+sed -i '$a -a always,exit -F arch=b32 -S finit_module -F auid>=1000 -F auid!=4294967295 -k module_chng' ${auditrules}
+sed -i '$a -a always,exit -F arch=b64 -S finit_module -F auid>=1000 -F auid!=4294967295 -k module_chng' ${auditrules}
+
+# 167 紀錄open_by_handle_at系統呼叫使用情形 啟用
+sed -i '$a -a always,exit -F arch=b32 -S open_by_handle_at -F exit=-EPERM -F auid>=1000 -F auid!=4294967295 -k perm_access' ${auditrules}
+sed -i '$a -a always,exit -F arch=b64 -S open_by_handle_at -F exit=-EPERM -F auid>=1000 -F auid!=4294967295 -k perm_access' ${auditrules}
+sed -i '$a -a always,exit -F arch=b32 -S open_by_handle_at -F exit=-EACCES -F auid>=1000 -F auid!=4294967295 -k perm_access' ${auditrules}
+sed -i '$a -a always,exit -F arch=b64 -S open_by_handle_at -F exit=-EACCES -F auid>=1000 -F auid!=4294967295 -k perm_access' ${auditrules}
+
+# 168 紀錄usermod指令使用情形
+
+-a always,exit -F path=/usr/sbin/usermod -F perm=x -F auid>=1000 -F auid!=4294967295 -k privileged-usermod
+
+
+sed -i '$a ' ${auditrules}
 
 sed -i '$a ' ${auditrules}
