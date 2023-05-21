@@ -10,6 +10,9 @@
 
 # 尚未確認實作 項次
 # 08
+# 37 aide crontab 時間討論
+# 40 如何寫成shellscript
+
 # 61~72，74，78~79
 # 80~91
 # 96
@@ -32,10 +35,15 @@ touch ${FCB_LOG_SUCCESS}
 touch ${FCB_LOG_ERROR}
 touch ${FCB_LOG_FAILED}
 
-# 磁碟與檔案系統
-echo "=========================="
+# =================
+# || 磁碟與檔案系統 ||
+# =================
+echo "==================================="
 echo "== DISK and File System =="
-echo "=========================="
+echo "==================================="
+echo "==================================="
+echo "== 磁碟與檔案系統 =="
+echo "==================================="
 
 # 01 crams檔案系統 停用
 
@@ -77,13 +85,16 @@ echo "# disable usb storage" > /etc/modprobe.d/usb-storage.conf
 sed -i '$a install usb-storage /bin/true' /etc/modprobe.d/usb-storage.conf
 sed -i '$a blacklist usb-storage' /etc/modprobe.d/usb-storage.conf
 rmmod usb-storage
-echo "31 disable usb-storage" >> ${FCB_LOG_SUCCESS}
 
-echo "磁碟與檔案系統 設定成功。"
-
-# 系統設定與維護
+# =================
+# || 系統設定與維護 ||
+# =================
 echo "==================================="
 echo "== System Config and Maintenance =="
+echo "==================================="
+
+echo "==================================="
+echo "== 系統設定與維護 =="
 echo "==================================="
 
 # 32 GPG簽章驗證
@@ -98,9 +109,9 @@ fi
 
 if grep -q "gpgcheck=1" /etc/dnf/dnf.conf; then
     echo "/etc/dnf/dnf.conf GPG簽章驗證OK!" >> ${FCB_LOG_SUCCESS}
-elif grep -q "gpgcheck=0" /etc/dnf.conf; then
-    sed -i 's/gpgcheck=0/gpgcheck=1/g' /etc/dnf.conf
-    echo "/etc/yum.conf 已修改 GPG簽章驗證OK!" >> ${FCB_LOG_SUCCESS}
+elif grep -q "gpgcheck=0" /etc/dnf/dnf.conf; then
+    sed -i 's/gpgcheck=0/gpgcheck=1/g' /etc/dnf/dnf.conf
+    echo "/etc/dnf/dnf.conf 已修改 GPG簽章驗證OK!" >> ${FCB_LOG_SUCCESS}
 else
     echo "/etc/dnf/dnf.conf GPG簽章驗證「不符合FCB規定」" >> ${FCB_LOG_FAILED}
 fi
@@ -113,6 +124,7 @@ sed -i '$a ##設定sudo指令使用pty' /etc/sudoers
 sed -i '$a Defaults use_pty' /etc/sudoers
 
 # 35 sudo自訂義日誌檔案 啟用
+sed -i '$a ##sudo自訂義日誌檔案' /etc/sudoers
 sed -i '$a Defaults logfile="sudo.log"' /etc/sudoers
 
 # 36 安裝AIDE套件
@@ -123,22 +135,22 @@ mv /var/lib/aide/aide.db.new.gz /var/lib/aide/aide.db.gz
 # 37 每天定期檢查檔案系統完整性
 touch /var/spool/cron/root
 chmod 600 root
+echo "# 檢查檔案系統完整性" > /var/spool/cron/root
+sed -i '$a 0 5 * * * /usr/sbin/aide --check' /var/spool/cron/root
 
-
-# 開機載入程式設定檔之所有權
-# 這項原則設定決定開機載入程式(GRUB)設定檔之擁有者與群組
-# GRUB 設定檔主要功能是用來記錄載入作業系統核心所使用之參數
-# 將 GRUB 設定檔之擁有者與擁有群組設為 root，以防止非root 使用者變更檔案內容
-# 備註：如果使用其他開機載入程式(如 LILO 或 EFIGRUB)，請比照上述原則進行設定
+# 38 39 開機載入程式設定檔之所有權
 chown root:root /boot/grub2/grub.cfg
 chown root:root /boot/grub2/grubenv
-
 chmod 600 /boot/grub2/grub.cfg
 chmod 600 /boot/grub2/grubenv
 
-# 開機載入程式之通行碼
+# 40 開機載入程式之通行碼 設定通行碼
+echo "開機載入程式之通行碼 設定通行碼"
 grub2-setpassword
 grub2-mkconfig -o /boot/grub2/grub.cfg
+
+# 41 單一使用者模式身份識別 啟用
+
 
 # 核心傾印功能
 # 這項原則設定決定是否啟用核心傾印(Core dump)功能
