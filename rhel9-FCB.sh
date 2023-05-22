@@ -12,11 +12,11 @@
 # 08
 # 37 aide crontab 時間討論
 # 40 如何寫成shellscript
-
 # 61~72，74，78~79
 # 80~91
 # 96
 # 108
+# 185 186 187 188
 
 # 確認是否以root身分執行
 if [[ $EUID -ne 0 ]]; then
@@ -717,10 +717,120 @@ sed -i '$a -a always,exit -F arch=b32 -S open_by_handle_at -F exit=-EACCES -F au
 sed -i '$a -a always,exit -F arch=b64 -S open_by_handle_at -F exit=-EACCES -F auid>=1000 -F auid!=4294967295 -k perm_access' ${auditrules}
 
 # 168 紀錄usermod指令使用情形
+# 168 紀錄usermod指令使用情形 啟用
+sed -i '$a -a always,exit -F path=/usr/sbin/usermod -F perm=x -F auid>=1000 -F auid!=4294967295 -k privileged-usermod' ${auditrules}
 
--a always,exit -F path=/usr/sbin/usermod -F perm=x -F auid>=1000 -F auid!=4294967295 -k privileged-usermod
+# 169 紀錄chaacl指令使用情形 啟用
+sed -i '$a -a always,exit -F path=/usr/bin/chacl -F perm=x -F auid>=1000 -F auid!=4294967295 -k perm_chng' ${auditrules}
 
+# 170 紀錄kmod指令使用情形 啟用
+sed -i '$a -w /bin/kmod -p x -k modules' ${auditrules}
 
-sed -i '$a ' ${auditrules}
+# 171 紀錄Pam_Faillock日誌檔案 啟用
+sed -i '$a -w /var/log/faillock -p wa -k logins' ${auditrules}
 
-sed -i '$a ' ${auditrules}
+# 172 紀錄execve系統呼叫使用情形 啟用
+sed -i '$a -a always,exit -F arch=b32 -S execve -C uid!=euid -F key=execpriv' ${auditrules}
+sed -i '$a -a always,exit -F arch=b64 -S execve -C uid!=euid -F key=execpriv' ${auditrules}
+sed -i '$a -a always,exit -F arch=b32 -S execve -C gid!=egid -F key=execpriv' ${auditrules}
+sed -i '$a -a always,exit -F arch=b64 -S execve -C gid!=egid -F key=execpriv' ${auditrules}
+
+# 173 auditd設定不變模式
+sed -i '12a # Set enabled flag.' ${auditrules}
+sed -i '13a # To lock the audit configuration so that it can’t be changed, pass a 2 as the argument.' ${auditrules}
+sed -i '14a -e 2' ${auditrules}
+
+# 174 rsyslog套件 安裝
+dnf install -y rsyslog
+
+# 175 rsyslog服務 啟用
+systemctl --now enable rsyslog
+
+# 176 設定rsyslog日誌檔案預設權限
+chmod 640 /etc/rsyslog.conf
+chmod 640 /etc/rsyslog.d/*.conf
+
+# 177 設定rsyslog 日誌紀錄規則
+sed -i '46a daemon.*\t\t\t\t\t\t\/var\/log\/messages' /etc/rsyslog.conf
+sed -i '50a auth.*\t\t\t\t\t\t\t\/var\/log\/secure' /etc/rsyslog.conf
+
+# 178 /var/log/messages檔案所有權
+chown root:root /var/log/messages
+
+# 179 /var/log 目錄所有權
+chown root:root /var/log
+
+# 180 設定journald將日誌發送到rsyslog
+sed -i 's/#ForwardToSyslog=no/ForwardToSyslog=yes/g' /etc/systemd/journald.conf
+
+# 181 設定journald壓縮日誌檔案
+sed -i 's/#Compress=yes/Compress=yes/g' /etc/systemd/journald.conf
+
+# 182 設定journald將日誌檔案永久保存於磁碟
+sed -i 's/#Storage=auto/Storage=persistent/g' /etc/systemd/journald.conf
+
+# 183 設定/var/log目錄下所有日誌檔案權限
+find /var/log -type f -perm /g=w,g=x,o=w,o=x -exec chmod 644 {} \;
+
+# SELinux
+echo "=============================="
+echo "======= SELinux Config ======="
+echo "=============================="
+
+# 184 SELinux套件 安裝
+dnf install libselinux
+
+# 185 開機載入程式啟用SELinux 啟用
+
+# 186 SELinux政策 targeted或更嚴格之政策
+# 判斷式
+if grep -q "SELINUXTYPE=targeted" /etc/selinux/config; then
+    echo "/etc/selinux/config SELINUXTYPE 驗證OK!" >> ${FCB_LOG_SUCCESS}
+else
+    sed -i 's/\(^SELINUXTYPE=.*\)/SELINUXTYPE=targeted/g' /etc/selinux/config
+    echo "/etc/selinux/config 已修改 SELINUXTYPE 驗證OK!" >> ${FCB_LOG_SUCCESS}
+fi
+
+# 187 SELinux啟用狀態 enforcing
+# 判斷式
+
+# 188 未受限程序 無
+
+# 189 移除setroubleshoot套件
+dnf remove -y setroubleshoot
+
+# 190 移除mcstrans套件
+dnf remove mcstrans
+
+# 191 啟用cron守護程序
+systemctl --now enable crond
+
+# 192 /etc/crontab檔案所有權
+chown root:root /etc/crontab
+
+# 193 /etc/crontab檔案權限
+chmod 600 /etc/crontab
+
+# 194 /etc/cron.hourly目錄所有權
+chown root:root /etc/cron.hourly
+
+# 195 /etc/cron.hourly目錄權限
+chmod 700 /etc/cron.hourly
+
+# 196 /etc/cron.daily目錄所有權
+chown root:root /etc/cron.daily
+
+# 197 /etc/cron.daily目錄權限
+chmod 700 /etc/cron.daily
+
+# 198 /etc/cron.weekly目錄所有權
+chown root:root /etc/cron.weekly
+
+# 199 /etc/cron.weekly目錄權限
+chmod 700 /etc/cron.weekly
+
+# 200 /etc/cron.monthly目錄所有權
+chown root:root /etc/cron.monthly
+
+# 201 /etc/cron.monthly目錄權限
+chmod 700 /etc/cron.monthly
