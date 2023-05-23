@@ -17,6 +17,7 @@
 # 96
 # 108
 # 185 186 187 188
+# 207 208
 
 # 確認是否以root身分執行
 if [[ $EUID -ne 0 ]]; then
@@ -94,7 +95,7 @@ echo "== System Config and Maintenance =="
 echo "==================================="
 
 echo "==================================="
-echo "== 系統設定與維護 =="
+echo "=========== 系統設定與維護 ==========="
 echo "==================================="
 
 # 32 GPG簽章驗證
@@ -211,146 +212,16 @@ fi
 
 echo "PATH is valid"
 
-# /etc/shadow檔案行首是否允許存在「+」符號
-grep '^\+:' /etc/shadow
-# /etc/group檔案行首是否允許存在「+」符號
-grep '^\+:' /etc/group
 
 # 79 使用者家目錄權限
 # 取得所有使用者清單，nologin /bin/false, root不用顯示
-cat /etc/passwd | cut -d ':' -f 1,7 | grep -v 'halt\|sync\|shutdown\|nologin\|root\|\/bin\/false' | cut -d ':' -f 1
+getent passwd | cut -d ':' -f 1,6,7 | grep -v 'halt\|sync\|shutdown\|nologin\|root\|\/bin\/false' | cut -d ':' -f 2 | xargs chmod 700
 
-# 使用者家目錄權限
-# 使用者家目錄是系統預設之使用者主目錄，目錄下存放使用者之環境設定與個人檔案，因此任何使用者皆不應具有可寫入其他使用者家目錄之權限
-# 使用者家目錄應限制群組不具寫入(g-w)權限，其他使用者不具讀取、寫入及執行(o-rwx)權限，避免遭未經授權存取與竊取資料
-grep -E -v '^(halt|sync|shutdown)' /etc/passwd | awk -F:'($7 !="'"$(which nologin)"'" && $7 !="/bin/false") { print $1 " " $6 }' | while read user dir; do
-    if [ ! -d "$dir" ]; then
-        echo "The home directory ($dir) of user $user does not exist."
-    else
-        dirperm=$(ls -ld $dir | cut -f1 -d" ")
-        if [ $(echo $dirperm | cut -c6) != "-" ]; then
-            echo "Group Write permission set on the home directory ($dir) of user $user"
-        fi
-        if [ $(echo $dirperm | cut -c8) != "-" ]; then
-            echo "Other Read permission set on the home directory ($dir) of user $user"
-        fi
-        if [ $(echo $dirperm | cut -c9) != "-" ]; then
-            echo "Other Write permission set on the home directory ($dir) of user $user"
-        fi
-        if [ $(echo $dirperm | cut -c10) != "-" ]; then
-            echo "Other Execute permission set on the home directory ($dir) of user $user"
-        fi
-    fi
-done
-
-# 這項原則設定決定使用者家目錄擁有者是否為使用者
-# 使用者家目錄是系統預設之使用者主目錄，目錄下存放使用者之環境設定與個人檔案
-# 設定使用者家目錄為使用者擁有，以確保使用者個人資料安全
-grep -E -v '^(halt|sync|shutdown)' /etc/passwd | awk -F: '($7 !="'"$(which nologin)"'" && $7 !="/bin/false") { print $1 " " $6 }' | while read user dir; do
-    if [ ! -d "$dir" ]; then
-        echo "The home directory ($dir) of user $user does not exist."
-    else
-        owner=$(stat -L -c "%U" "$dir")
-        if [ "$owner" != "$user" ]; then
-            echo "The home directory ($dir) of user $user is owned by $owner."
-        fi
-    fi
-done
-
-# 這項原則設定決定使用者家目錄擁有群組是否為使用者群組
-# 使用者家目錄是系統預設之使用者主目錄，目錄下存放使用者之環境設定與個人檔案
-# 若使用者家目錄擁有群組 GID與使用者群組 GID 不同，將導致其他使用者可存取該使用者之檔案
-# 設定使用者家目錄為使用者群組擁有，以確保使用者個人資料安全
-grep -E -v '^(halt|sync|shutdown)' /etc/passwd | awk -F: '($7 !="'"$(whichnologin)"'" && $7 !="/bin/false") { print $1 " " $4 " "$6 }' | while read user gid dir; do
-    if [ ! -d "$dir" ]; then
-        echo "The home directory ($dir) of user $user does not exist."
-    else
-        owner=$(stat -L -c "%g" "$dir")
-        if [ "$owner" != "$gid" ]; then
-            echo "The home directory ($dir) of group $gid is owned by group $owner."
-        fi
-    fi
-done
-
-# 這項原則設定決定是否設定使用者家目錄之「.」檔案權限，使用者家目錄之「.」檔案包含使用者之初始化檔案與其他設定
-#  限制使用者家目錄之「.」檔案寫入權限，以避免惡意人士藉由竊取或修改使用者資料，進而取得該使用者之系統權限
-grep -E -v '^(halt|sync|shutdown)' /etc/passwd | awk -F: '($7 !="'"$(which nologin)"'" && $7 !="/bin/false") { print $1 " " $6 }' | while read user dir; do
-    if [ ! -d "$dir" ]; then
-        echo "The home directory ($dir) of user $user does not exist."
-    else
-        for file in $dir/.[A-Za-z0-9]*; do
-            if [ ! -h "$file" -a -f "$file" ]; then
-                fileperm=$(ls -ld $file | cut -f1 -d" ")
-                if [ $(echo $fileperm | cut -c6) != "-" ]; then
-                    echo "Group Write permission set on file $file"
-                fi
-                if [ $(echo $fileperm | cut -c9) != "-" ]; then
-                    echo "Other Write permission set on file $file"
-                fi
-            fi
-        done
-    fi
-done
-
-# 這項原則設定決定是否移除使用者家目錄之「.forward」檔案
-# 「.forward」檔案用於設定將使用者郵件轉發到指定之電子郵件信箱
-# 移除「.forward」檔案以停用郵件轉發功能，避免機敏資料洩漏
-grep -E -v '^(root|halt|sync|shutdown)' /etc/passwd | awk -F: '($7 != "'"$(which nologin)"'" && $7 !="/bin/false") { print $1 " " $6 }' | while read user dir; do
-    if [ ! -d "$dir" ]; then
-        echo "The home directory ($dir) of user $user does not exist."
-    else
-        if [ ! -h "$dir/.forward" -a -f "$dir/.forward" ]; then
-            echo ".forward file $dir/.forward exists"
-        fi
-    fi
-done
-
-# 這項原則設定決定是否移除使用者家目錄之「.netrc」檔案
-# 「.netrc」檔案包含用於登入遠端 FTP 主機進行檔案傳輸之帳號與明文通行碼，移除「.netrc」檔案以避免對遠端FTP 主機造成之風險
-grep -E -v '^(root|halt|sync|shutdown)' /etc/passwd | awk -F: '($7 != "'"$(which nologin)"'" && $7 != "/bin/false") { print $1 " " $6 }' | while read user dir; do
-    if [ ! -d "$dir" ]; then
-        echo "The home directory ($dir) of user $user does not exist."
-    else
-        if [ ! -h "$dir/.netrc" -a -f "$dir/.netrc" ]; then
-            echo ".netrc file $dir/.netrc exists"
-        fi
-    fi
-done
-
-# 這項原則設定決定是否移除使用者家目錄之「.rhosts」檔案
-# 「.rhosts」檔案用於指定那個使用者可以不需要輸入通行碼即可執行 rsh 遠端連線，移除「.rhosts」檔案以避免遭惡意人士取得可攻擊其他遠端主機之資訊
-grep -E -v '^(root|halt|sync|shutdown)' /etc/passwd | awk -F: '($7 != "'"$(which nologin)"'" && $7 !="/bin/false") { print $1 " " $6 }' | while read user dir; do
-    if [ ! -d "$dir" ]; then
-        echo "The home directory ($dir) of user $user does not exist."
-    else
-        for file in $dir/.rhosts; do
-            if [ ! -h "$file" -a -f "$file" ]; then
-                echo ".rhosts file in $dir"
-            fi
-        done
-    fi
-done
-
-# 這項原則設定決定是否檢查/etc/passwd 檔案設定之群組，是否都存在於/etc/group 檔案中
-# 在/etc/passwd 檔案中，使用者帳號設定之群組，若不存在於/etc/group 檔案中，代表群組權限管理不恰當，將可能對系統安全構成威脅
-echo "檢查/etc/passwd檔案設應之群組"
-for i in $(cut -s -d: -f4 /etc/passwd | sort -u ); do
-    grep -q -P "^.*?:[^:]*:$i:" /etc/group
-    if [ $? -ne 0 ]; then
-        echo "Group $i is referenced by /etc/passwd but does not exist in /etc/group"
-    fi
-done
-
-# 這項原則設定決定是否檢查/etc/passwd 檔案之使用者帳號UID(User Identifier，使用者識別碼)皆不相同
-# 儘管透過 useradd 指令新增使用者帳號時，不允許建立重複之 UID，但系統管理者可手動編輯/etc/passwd 檔案並更改UID，造成 UID 重複之情形
-# 為每個使用者帳號設定唯一之UID，以提供適當之存取防護
-echo "唯一之UID"
-cut -f3 -d":" /etc/passwd | sort -n | uniq -c | while read x ; do
-    [ -z "$x" ] && break set - $x
-    if [ $1 -gt 1 ]; then
-        users=$(awk -F: '($3 == n) { print $1 }' n=$2 /etc/passwd | xargs)
-        echo "Duplicate UID ($2):$users"
-    fi
+# 80 使用者家目錄擁有者
+getent passwd | grep -v 'halt\|sync\|shutdown\|nologin\|root\|\/bin\/false' | while read line; do
+    user=$(echo $line | cut -d: -f1)
+    homepath=$(sh -c "echo ~$user")
+    chown $user:$user $homepath
 done
 
 # remove xinetd package
@@ -802,6 +673,11 @@ dnf remove -y setroubleshoot
 # 190 移除mcstrans套件
 dnf remove mcstrans
 
+# cron設定
+echo "=============================="
+echo "========== cron設定 =========="
+echo "=============================="
+
 # 191 啟用cron守護程序
 systemctl --now enable crond
 
@@ -834,3 +710,40 @@ chown root:root /etc/cron.monthly
 
 # 201 /etc/cron.monthly目錄權限
 chmod 700 /etc/cron.monthly
+
+# 202 /etc/cron.d目錄所有權
+chown root:root /etc/cron.d
+
+# 203 /etc/cron.d目錄權限
+chmod 700 /etc/cron.d
+
+# 204 at.allow與cron.allow檔案所有權
+# 205 at.allow與cron.allow檔案權限
+rm /etc/cron.deny
+rm /etc/at.deny
+touch /etc/cron.allow
+touch /etc/at.allow
+chown root:root /etc/cron.allow
+chown root:root /etc/at.allow
+chmod 600 /etc/cron.allow
+chmod 600 /etc/at.allow
+
+# 206 cron日誌紀錄功能 啟用
+if grep -q "cron.* /var/log/cron" /etc/rsyslog.conf; then
+    echo "/etc/rsyslog.conf 驗證OK!" >> ${FCB_LOG_SUCCESS}
+else
+    echo "/etc/rsyslog.conf cron.*驗證「不符合FCB規定」" >> ${FCB_LOG_FAILED}
+fi
+
+# 帳號與存取控制
+echo "=============================="
+echo "======== 帳號與存取控制 ========"
+echo "=============================="
+
+# 209 通行碼最小長度 12個字元以上
+sed -i 's/# minlen = 8/minlen = 12/g' /etc/security/pwquality.conf
+
+# 210 通行碼必須至少包含字元類別數量
+sed -i 's/# minclass = 0/minclass = 4/g' /etc/security/pwquality.conf
+
+# 211 通行碼
