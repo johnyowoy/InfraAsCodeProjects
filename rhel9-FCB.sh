@@ -17,7 +17,7 @@
 # 96
 # 108
 # 185 186 187 188
-# 207 208
+# 207 208 221
 
 # 確認是否以root身分執行
 if [[ $EUID -ne 0 ]]; then
@@ -185,6 +185,7 @@ update-crypto-policies
 fips-mode-setup --enable
 
 # Set permissions
+# 45~60
 echo "設定passwd shadow group gshadow 檔案權限"
 chown root:root /etc/passwd
 chmod 644 /etc/passwd
@@ -224,7 +225,52 @@ getent passwd | grep -v 'halt\|sync\|shutdown\|nologin\|root\|\/bin\/false' | wh
     chown $user:$user $homepath
 done
 
-# remove xinetd package
+# 82 使用者家目錄之「.」檔案權限
+getent passwd | grep -v 'halt\|sync\|shutdown\|nologin\|root\|\/bin\/false' | while read line; do
+    user=$(echo $line | cut -d: -f1)
+    homepath=$(sh -c "echo ~$user")
+    cd $homepath
+    chmod 700 .
+done
+
+# 83 使用者家目錄之「.forward」檔案權限
+getent passwd | grep -v 'halt\|sync\|shutdown\|nologin\|root\|\/bin\/false' | while read line; do
+    user=$(echo $line | cut -d: -f1)
+    homepath=$(sh -c "echo ~$user")
+    cd $homepath
+    if [ -f ".forward" ]; then
+        rm .forward
+    else
+        echo "$user file .forward not exists."
+    fi
+done
+
+# 84 使用者家目錄之「.netrc」檔案權限
+getent passwd | grep -v 'halt\|sync\|shutdown\|nologin\|root\|\/bin\/false' | while read line; do
+    user=$(echo $line | cut -d: -f1)
+    homepath=$(sh -c "echo ~$user")
+    cd $homepath
+    if [ -f ".netrc" ]; then
+        rm .netrc
+    else
+        echo "$user file .netrc not exists."
+    fi
+done
+
+# 85 使用者家目錄之「.rhosts」檔案權限
+getent passwd | grep -v 'halt\|sync\|shutdown\|nologin\|root\|\/bin\/false' | while read line; do
+    user=$(echo $line | cut -d: -f1)
+    homepath=$(sh -c "echo ~$user")
+    cd $homepath
+    if [ -f ".rhosts" ]; then
+        rm .rhosts
+    else
+        echo "$user file .rhosts not exists."
+    fi
+done
+
+
+# 92 remove xinetd package
 XinetdService='xinetd'
 IS_STATUS="systemctl status ${XinetdService}"
 if [ "${IS_STATUS}" == "Unit ${XinetdService}.service could not be found." ]; then
@@ -238,7 +284,7 @@ fi
 
 # 93 chrony校時設定
 
-# disable rsyncd service
+# 94 disable rsyncd service
 RsyncdService='rsyncd'
 IS_ACTIVE="systemctl is-active ${RsyncdService}.service"
 if [ "$IS_ACTIVE" == "inactive" ]; then
@@ -249,7 +295,7 @@ else
     echo "Closed ${RsyncdService} service." >> ${FCB_LOG_SUCCESS}
 fi
 
-# disable avahi-daemon service
+# 95 disable avahi-daemon service
 AvahiService='avahi-daemon'
 IS_ACTIVE="systemctl is-active ${AvahiService}.service"
 if [ "$IS_ACTIVE" == "inactive" ]; then
@@ -260,44 +306,49 @@ else
     echo "${AvahiService} is not active." >> ${FCB_LOG_SUCCESS}
 fi
 
-# disable snmp service
+# 96 disable snmp service
 systemctl stop snmpd
 systemctl --now disable snmpd
 
-# disable Squid service
+# 97 disable Squid service
 systemctl stop squid
 systemctl --now disable squid
 
-# disable Samba service
+# 98 disable Samba service
 systemctl stop smb
 systemctl --now disable smb
 
-# disable FTP service
+# 99 disable FTP service
 systemctl stop vsftpd
 systemctl --now disable vsftpd
 
-# disable NIS service
+# 100 disable NIS service
 systemctl stop ypserv
 systemctl --now disable ypserv
 
-# enable kdump service
+# 101 enable kdump service
 systemctl start kdump.service
 systemctl --now enable kdump.service
 
-# remove ypbind package
+# 102 remove ypbind package NIS用戶端套件
 systemctl stop ypbind
 systemctl --now disable ypbind
 dnf remove -y ypbind
 
-# remove telnet package
+# 103 remove telnet-client package
+# 104 remove telnet-server package
 systemctl stop telnet.socket
 systemctl --now disable telnet.socket
+dnf remove -y telnet
 dnf remove -y telnet-server
 
-# remove tftp package
+# 105 remove rsh-server
+dnf remove rsh-server
+
+# 106 remove tftp package
 dnf remove -y tftp-server
 
-# 更新套件後移除舊版本元件
+# 107 更新套件後移除舊版本元件
 sed -i '$a clean_requirements_on_remove=True' /etc/yum.conf
 sed -i '$a clean_requirements_on_remove=True' /etc/dnf.conf
 
@@ -746,4 +797,39 @@ sed -i 's/# minlen = 8/minlen = 12/g' /etc/security/pwquality.conf
 # 210 通行碼必須至少包含字元類別數量
 sed -i 's/# minclass = 0/minclass = 4/g' /etc/security/pwquality.conf
 
-# 211 通行碼
+# 211 通行碼必須至少包含1個以上數字
+sed -i 's/# dcredit = 0/dcredit = -1/g' /etc/security/pwquality.conf
+
+# 212 通行碼必須至少包含1個以上大寫字母個數
+sed -i 's/# ucredit = 0/ucredit = -1/g' /etc/security/pwquality.conf
+
+# 213 通行碼必須至少包含1個以上小寫字母個數
+sed -i 's/# lcredit = 0/lcredit = -1/g' /etc/security/pwquality.conf
+
+# 214 通行碼必須至少包含1個以上特殊字元個數
+sed -i 's/# ocredit = 0/ocredit = -1/g' /etc/security/pwquality.conf
+
+# 215 新通行碼與舊通行碼最少3個以上相異字元數
+sed -i 's/# difok = 1/difok = 3/g' /etc/security/pwquality.conf
+
+# 216 同一類別字元可連續使用個數，4個以下但必須大於0
+sed -i 's/# maxclassrepeat = 0/maxclassrepeat = 4/g' /etc/security/pwquality.conf
+
+# 217 相同字元可連續使用個數，3個以下但必須大於0
+sed -i 's/# maxrepeat = 0/maxrepeat = 3/g' /etc/security/pwquality.conf
+
+# 218 必須禁止使用字典檔單字做為通行碼
+sed -i 's/# dictcheck = 1/# dictcheck = 1/g' /etc/security/pwquality.conf
+
+# 219 帳戶鎖定閾值
+sed -i 's/# deny = 3/deny = 5/g' /etc/security/faillock.conf
+
+# 220 帳戶鎖定時間900秒以上
+sed -i 's/# unlock_time = 600/unlock_time = 900/g' /etc/security/faillock.conf
+
+# 221 強制執行通行碼歷程紀錄 3個以上
+
+# 222 顯示登入失敗次數與日期 啟用
+sed -i '$a session required\t\t\tpam_lastlog.so showfailed' /etc/pam.d/postlogin
+
+# 223 通行碼
