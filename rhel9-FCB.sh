@@ -18,6 +18,9 @@
 # 108
 # 185 186 187 188
 # 207 208 221
+# 223 已經預設 ENCRYPT_METHOD SHA512
+# 230
+# SSH 5 
 
 # 確認是否以root身分執行
 if [[ $EUID -ne 0 ]]; then
@@ -39,12 +42,12 @@ touch ${FCB_LOG_FAILED}
 # =================
 # || 磁碟與檔案系統 ||
 # =================
-echo "==================================="
-echo "== DISK and File System =="
-echo "==================================="
-echo "==================================="
-echo "== 磁碟與檔案系統 =="
-echo "==================================="
+echo "===================================="
+echo "======= DISK and File System ======="
+echo "===================================="
+echo "===================================="
+echo "=========== 磁碟與檔案系統 ==========="
+echo "===================================="
 
 # 01 crams檔案系統 停用
 
@@ -832,4 +835,151 @@ sed -i 's/# unlock_time = 600/unlock_time = 900/g' /etc/security/faillock.conf
 # 222 顯示登入失敗次數與日期 啟用
 sed -i '$a session required\t\t\tpam_lastlog.so showfailed' /etc/pam.d/postlogin
 
-# 223 通行碼
+# 223 通行碼雜湊演算法
+
+# 224 通行碼最短使用期限
+sed -i '132 s/^.*/PASS_MIN_DAYS\t1/g' /etc/login.defs
+# chage --mindays 1 (使用者帳號名稱)
+
+# 225 通行碼到期前提醒使用者變更通行碼 14天以上
+sed -i '133 s/^.*/PASS_WARN_AGE\t14/g' /etc/login.defs
+# chage --warndays 14 (使用者帳號名稱)
+
+# 226 通行碼最長使用期限 90天以下，但必須大於0
+sed -i '131 s/^.*/PASS_MAX_DAYS\t90/g' /etc/login.defs
+# chage --maxdays 90 (使用者帳號名稱)
+
+# 227 通行碼到期後，帳號停用前之天數 30天以下，但須大於0
+useradd -D -f 30
+# chage --inactive 30 (使用者帳號名稱)
+
+# 228 登入嘗試失敗之延遲時間 4秒以上
+sed -i '14 s/^.*/FAIL_DELAY\t4/g' /etc/login.defs
+
+# 229 新使用者帳號預設建立使用者家目錄
+sed -i '262 s/^.*/CREATE_HOME\tyes/g' /etc/login.defs
+
+# 230 要求使用者必須經過身份鑑別才能提升權限
+
+# 231 限制每個帳號可同時登入之數量 10以下，但須大於0
+
+
+echo "==================================="
+echo "===== Firewalld Configuration ====="
+echo "==================================="
+
+# 1 安裝firewalld防火牆套件
+dnf install -y firewalld
+
+# 2 firewalld自動啟用服務
+systemctl --now enable firewalld
+
+# 3 停用iptables服務
+systemctl --now mask iptables
+
+# 4 停用nftables服務
+systemctl --now mask nftables
+
+# 5 firewalld防火牆設定區域
+firewall-cmd --set-default-zone=public
+
+echo "==================================="
+echo "===== Nftables Services Stop ======"
+echo "==================================="
+
+echo "===================================="
+echo "======== SSH Configuration ========="
+echo "===================================="
+
+# 1 sshd守護程序 啟用
+dnf install -y openssh-server
+systemctl --now enable sshd
+
+# 2 ssh協定版本
+sed -i '20a Protocol 2' /etc/ssh/sshd_config
+
+# 3 /etc/ssh/sshd_config檔案所有權
+chown root:root /etc/ssh/sshd_config
+
+# 4 /etc/ssh/sshd_config檔案權限
+chmod 600 /etc/ssh/sshd_config
+
+# 5 限制存取SSH
+
+# 6 SSH主機私鑰檔案所有權
+find /etc/ssh -xdev -type f -name 'ssh_host_*_key' -exec chown root:ssh_keys {} \;
+
+# 7 SSH主機私鑰檔案所有權
+find /etc/ssh -xdev -type f -name 'ssh_host_*_key' -exec chmod 640 {} \;
+
+# 8 SSH主機公鑰檔案所有權
+find /etc/ssh -xdev -type f -name 'ssh_host_*_key.pub' -exec chown root:root {} \;
+
+# 9 SSH主機公鑰檔案所有權
+find /etc/ssh -xdev -type f -name 'ssh_host_*_key.pub' -exec chmod 644 {} \;
+
+# 10 SSH加密演算法
+sed -i '34a Ciphers aes128-ctr,aes192-ctr,aes256-ctr' /etc/ssh/sshd_config
+
+# 11 SSH日誌紀錄等級 啟用
+sed -i 's/#LogLevel INFO/LogLevel INFO/g' /etc/ssh/sshd_config
+
+# 12 SSH X11 Forwarding功能 設定no
+sed -i 's/X11Forwarding yes/X11Forwarding no/g' /etc/ssh/sshd_config
+
+# 13 SSH MaxAuthTries參數
+sed -i 's/#MaxAuthTries 6/MaxAuthTries 4/g' /etc/ssh/sshd_config
+
+# 14 SSH IgnoreRhosts參數
+sed -i 's/#IgnoreRhosts yes/IgnoreRhosts yes/g' /etc/ssh/sshd_config
+
+# 15 SSH HostbasedAuthentication參數
+sed -i 's/#HostbasedAuthentication no/HostbasedAuthentication no/g' /etc/ssh/sshd_config
+
+# 16 SSH PermitRootLogin參數
+
+# 17 SSH PermitEmptyPasswords參數
+sed -i 's/#PermitEmptyPasswords no/PermitEmptyPasswords no/g' /etc/ssh/sshd_config
+
+# 18 SSH PermitUserEnvironment參數
+sed -i 's/#PermitUserEnvironment no/PermitUserEnvironment no/g' /etc/ssh/sshd_config
+
+# 19 SSH逾時時間
+sed -i 's/#ClientAliveInterval 0/ClientAliveInterval 600/g' /etc/ssh/sshd_config
+sed -i 's/#ClientAliveCountMax 3/ClientAliveCountMax 3/g' /etc/ssh/sshd_config
+
+# 20 SSH LoginGraceTime參數
+sed -i 's/#LoginGraceTime 2m/LoginGraceTime 60m/g' /etc/ssh/sshd_config
+
+# 21 SSH UsePAM參數 (預設已設定)
+
+# 22 SSH AllowTcpForwarding參數
+sed -i 's/#AllowTcpForwarding yes/AllowTcpForwarding no/g' /etc/ssh/sshd_config
+
+# 23 SSH MaxStartups參數
+sed -i 's/#MaxStartups 10:30:100/MaxStartups 10:30:60/g' /etc/ssh/sshd_config
+
+# 24 SSH MaxSession參數
+sed -i 's/#MaxSessions 10/MaxSessions 4/g' /etc/ssh/sshd_config
+
+# 25 SSH StrictModes參數
+sed -i 's/#StrictModes yes/StrictModes yes/g' /etc/ssh/sshd_config
+
+# 26 SSH Compression參數
+sed -i 's/#Compression delayed/Compression no/g' /etc/ssh/sshd_config
+
+# 27 SSH IgnoreUserKnownHosts參數
+sed -i 's/#IgnoreUserKnownHosts no/IgnoreUserKnownHosts yes/g' /etc/ssh/sshd_config
+
+# 28 SSH PrintLastLog參數
+sed -i 's/#PrintLastLog yes/PrintLastLog yes/g' /etc/ssh/sshd_config
+
+# 29 移除shosts.equiv檔案
+find / -name shosts.equiv -exec rm {} \;
+
+# 30 移除.shosts檔案
+find / -name *.shosts -exec rm {} \;
+
+# 31 停用覆寫全系統加密原則 (預設停用)
+
+systemctl restart sshd
