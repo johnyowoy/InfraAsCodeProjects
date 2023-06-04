@@ -9,7 +9,7 @@
 #   v1.0
 
 # 尚未確認實作 項次
-# 08
+# 08~29
 # 37 aide crontab 時間討論
 # 40 如何寫成shellscript
 # 61~72，74，78~79
@@ -20,7 +20,7 @@
 # 207 208 221
 # 223 已經預設 ENCRYPT_METHOD SHA512
 # 230
-# SSH 5 
+# SSH 5
 
 # 確認是否以root身分執行
 if [[ $EUID -ne 0 ]]; then
@@ -49,24 +49,43 @@ echo "===================================="
 echo "=========== 磁碟與檔案系統 ==========="
 echo "===================================="
 
-# 01 crams檔案系統 停用
+# 1 停用cramfs檔案系統
+echo "1 停用cramfs檔案系統"
+touch /etc/modprobe.d/cramfs.conf
+echo "# Ensure mounting of cramfs filesystems is disabled - modprobe" >> /etc/modprobe.d/cramfs.conf
+sed -i '$a install cramfs /bin/true' /etc/modprobe.d/cramfs.conf
+sed -i '$a blacklist cramfs' /etc/modprobe.d/cramfs.conf
+rmmod cramfs
 
-# 02 squashs檔案系統 停用
+# 2 停用squashfs檔案系統
+echo "2 停用squashfs檔案系統"
+touch /etc/modprobe.d/squashfs.conf
+echo "# Disable Mounting of squashfs Filesystems - modprobe" >> /etc/modprobe.d/squashfs.conf
+sed -i '$a install squashfs /bin/true' /etc/modprobe.d/squashfs.conf
+sed -i '$a blacklist squashfs' /etc/modprobe.d/squashfs.conf
+rmmod squashfs
 
-# 03 udf檔案系統 停用
+# 3 停用udf檔案系統
+echo "3 停用udf檔案系統"
+touch /etc/modprobe.d/udf.conf
+echo "# Disable Mounting of udf Filesystems - modprobe" >> /etc/modprobe.d/udf.conf
+sed -i '$a install udf /bin/true' /etc/modprobe.d/udf.conf
+sed -i '$a blacklist udf' /etc/modprobe.d/udf.conf
+rmmod udf
 
-# 04 設定/tmp目錄之檔案系統
-#sed -i '$a tmpfs\t\t\t/tmp\t\t\ttmpfs\tdefaults,rw,nosuid,nodev,noexec,relatime\t0 0' /etc/fstab
+# 4 設定/tmp目錄之檔案系統 tmpfs
+echo "4 設定/tmp目錄之檔案系統 tmpfs"
+sed -i '$a tmpfs\t\t\t/tmp\t\t\ttmpfs\tdefaults,rw,nosuid,nodev,noexec,relatime\t0 0' /etc/fstab
 #systemctl unmask tmp.mount
 #systemctl enable tmp.mount
 ## sed -i 's/Options=mode=1777,strictatime/Options=mode=1777,strictatime,noexec,nodev,nosuid/g' /etc/systemd/system/local-fs.target.wants/tmp.mount
 #sed -i 's/\(^Options=mode=1777,strictatime\)/\1,noexec,nodev,nosuid/' /etc/systemd/system/local-fs.target.wants/tmp.mount
 
-# 05 設定/tmp目錄之nodev選項 啟用
+# 5~7 啟用 設定/tmp目錄之nodev,nosuid,noexec選項
+echo "5~7 啟用 設定/tmp目錄之nodev,nosuid,noexec選項"
+sed -i '$a /tmp\t\t\t/var/tmp\t\tnone\tdefaults,nodev,nosuid,noexec\t\t0 0' /etc/fstab
 
-# 06 設定/tmp目錄之nosuid選項 啟用
-
-# 07 設定/tmp目錄之noexec選項 啟用
+mount -o remount,nodev,nosuid,noexec /tmp
 
 # 08 設定/var目錄之檔案系統 使用獨立分割磁區或邏輯磁區
 
@@ -80,10 +99,12 @@ echo "===================================="
 
 # 13 設定/var/log目錄之檔案系統 使用獨立分割磁區或邏輯磁區
 
-# 30 autofs服務 停用
+# 30 停用autofs服務
+echo "30 停用autofs服務"
 systemctl --now disable autofs
 
-# 31 USB儲存裝置 停用
+# 31 停用USB儲存裝置
+echo "31 停用USB儲存裝置"
 touch /etc/modprobe.d/usb-storage.conf
 echo "# disable usb storage" > /etc/modprobe.d/usb-storage.conf
 sed -i '$a install usb-storage /bin/true' /etc/modprobe.d/usb-storage.conf
@@ -102,6 +123,7 @@ echo "=========== 系統設定與維護 ==========="
 echo "==================================="
 
 # 32 GPG簽章驗證
+echo "32 GPG簽章驗證"
 if grep -q "gpgcheck=1" /etc/yum.conf; then
     echo "/etc/yum.conf GPG簽章驗證OK!" >> ${FCB_LOG_SUCCESS}
 elif grep -q "gpgcheck=0" /etc/yum.conf; then
@@ -121,9 +143,11 @@ else
 fi
 
 # 33 安裝sudo套件
+echo "33 安裝sudo package"
 dnf install -y sudo
 
 # 34 設定sudo指令使用pty
+echo "34 設定sudo指令使用pty"
 sed -i '$a ##設定sudo指令使用pty' /etc/sudoers
 sed -i '$a Defaults use_pty' /etc/sudoers
 
@@ -153,15 +177,12 @@ echo "開機載入程式之通行碼 設定通行碼"
 grub2-setpassword
 grub2-mkconfig -o /boot/grub2/grub.cfg
 
-# 41 單一使用者模式身份識別 啟用
+# 41 啟用單一使用者模式身份識別
+echo "Ensure authentication required for single user mode."
+sed -i '22s/rescue/emergency/g' /usr/lib/systemd/system/rescue.service
 
-
-# 核心傾印功能
-# 這項原則設定決定是否啟用核心傾印(Core dump)功能
-# 核心傾印檔案是程式異常終止時，系統將當時記憶體內容以檔案方式記錄下來所產生之記憶體映像檔案，可供程式除錯之用
-# 禁止使用者與 SUID 程式產生核心傾印檔案，避免核心傾印檔案洩露如記憶體位址或空間配置等敏感資
-
-# Disbale core dumps
+# 42 停用核心傾印功能
+echo "Disbale core dumps"
 sed -i '$a hard core 0' /etc/security/limits.conf
 
 sed -i '$a fs.suid_dumpable = 0' /etc/sysctl.conf
@@ -171,21 +192,14 @@ sed -i 's/\#ProcessSizeMax=2G/ProcessSizeMax=0/g' /etc/systemd/coredump.conf
 
 systemctl daemon-reload
 
+# 43 記憶體位址空間配置隨機載入
 sed -i '$a kernel.randomize_va_space = 2' /etc/sysctl.conf
 sysctl -w kernel.randomize_va_space=2
 
-# 設定全系統加密原則使用FUTURE 或 FIPS 原則，避免使用較舊且易被攻擊之加密演算法
-# FUTURE：採取保守之安全原則，可承受近期相關攻擊，不允許使用 SHA-1 演算法，要求 RSA 密鑰與Diffie-Hellman 金鑰至少為3,072 位元
-#  FIPS：符合 FIPS140-2 要求原則，使用內建之 fips-mode-setup 工具，將作業系統切換到 FIPS 模式
-
-# 全系統加密原則是否為FUTURE 或 FIPS
+# 44 全系統加密原則是否為FUTURE 或 FIPS
 echo "設定全系統加密原則"
-grep -E -i '^\s*(FUTURE|FIPS)\s*(\s+#.*)?$' /etc/crypto-policies/config
-
 update-crypto-policies --set FUTURE
 update-crypto-policies
-
-fips-mode-setup --enable
 
 # Set permissions
 # 45~60
@@ -207,7 +221,9 @@ chmod 644 /etc/group-
 chown root:root /etc/gshadow-
 chmod 000 /etc/gshadow-
 
-# 檢查PATH中是否包含 . 或 .. 或路徑開頭不是 /
+# 61 其他使用者寫入具有全域寫入權限之檔案 禁止寫入
+
+# 73 檢查PATH中是否包含 . 或 .. 或路徑開頭不是 /
 echo "Check PATH"
 if [[ "$PATH" == *.:* ]] || [[ "$PATH" == *..:* ]] || [[ "$PATH" != /*:* ]]; then
     echo "Error: PATH contains invalid entries" >> ${FCB_LOG_ERROR}
