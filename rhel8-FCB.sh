@@ -1,8 +1,7 @@
 #!/bin/bash
-#!/bin/bash
 # Program
-#   Red Hat Enterprise Linux 9 Systemctl Security Check ShellScript
-#   GCB政府組態基準-Red Hat Enterprise Linux 9
+#   Red Hat Enterprise Linux 8 Systemctl Security Check ShellScript
+#   GCB政府組態基準-Red Hat Enterprise Linux 8
 # History
 #   2023/04/19    JINHAU, HUANG
 # Version
@@ -20,13 +19,15 @@
 # 207 208 221
 # 223 已經預設 ENCRYPT_METHOD SHA512
 # 230
-# SSH 5
+# SSH 5 限制SSH存取 啟用
+# SSH 16 PermitRootLogin參數討論, 預設no 
 
 # 確認是否以root身分執行
 if [[ $EUID -ne 0 ]]; then
     echo "This script MUST be run as root!!"
     exit 1
 fi
+echo '現在您正以root權限執行腳本...'
 
 # Log異常檢視
 # 符合FCB Log
@@ -39,337 +40,336 @@ touch ${FCB_LOG_SUCCESS}
 touch ${FCB_LOG_ERROR}
 touch ${FCB_LOG_FAILED}
 
-# =================
-# || 磁碟與檔案系統 ||
-# =================
-echo "===================================="
-echo "======= DISK and File System ======="
-echo "===================================="
-echo "===================================="
-echo "=========== 磁碟與檔案系統 ==========="
-echo "===================================="
+# 磁碟與檔案系統
+function DiskFilesystem () {
+    # 1 停用cramfs檔案系統
+    echo "1 停用cramfs檔案系統"
+    touch /etc/modprobe.d/cramfs.conf
+    echo "# Ensure mounting of cramfs filesystems is disabled - modprobe" >> /etc/modprobe.d/cramfs.conf
+    sed -i '$a install cramfs /bin/true' /etc/modprobe.d/cramfs.conf
+    sed -i '$a blacklist cramfs' /etc/modprobe.d/cramfs.conf
+    rmmod cramfs
 
-# 1 停用cramfs檔案系統
-echo "1 停用cramfs檔案系統"
-touch /etc/modprobe.d/cramfs.conf
-echo "# Ensure mounting of cramfs filesystems is disabled - modprobe" >> /etc/modprobe.d/cramfs.conf
-sed -i '$a install cramfs /bin/true' /etc/modprobe.d/cramfs.conf
-sed -i '$a blacklist cramfs' /etc/modprobe.d/cramfs.conf
-rmmod cramfs
+    # 2 停用squashfs檔案系統
+    echo "2 停用squashfs檔案系統"
+    touch /etc/modprobe.d/squashfs.conf
+    echo "# Disable Mounting of squashfs Filesystems - modprobe" >> /etc/modprobe.d/squashfs.conf
+    sed -i '$a install squashfs /bin/true' /etc/modprobe.d/squashfs.conf
+    sed -i '$a blacklist squashfs' /etc/modprobe.d/squashfs.conf
+    rmmod squashfs
 
-# 2 停用squashfs檔案系統
-echo "2 停用squashfs檔案系統"
-touch /etc/modprobe.d/squashfs.conf
-echo "# Disable Mounting of squashfs Filesystems - modprobe" >> /etc/modprobe.d/squashfs.conf
-sed -i '$a install squashfs /bin/true' /etc/modprobe.d/squashfs.conf
-sed -i '$a blacklist squashfs' /etc/modprobe.d/squashfs.conf
-rmmod squashfs
+    # 3 停用udf檔案系統
+    echo "3 停用udf檔案系統"
+    touch /etc/modprobe.d/udf.conf
+    echo "# Disable Mounting of udf Filesystems - modprobe" >> /etc/modprobe.d/udf.conf
+    sed -i '$a install udf /bin/true' /etc/modprobe.d/udf.conf
+    sed -i '$a blacklist udf' /etc/modprobe.d/udf.conf
+    rmmod udf
 
-# 3 停用udf檔案系統
-echo "3 停用udf檔案系統"
-touch /etc/modprobe.d/udf.conf
-echo "# Disable Mounting of udf Filesystems - modprobe" >> /etc/modprobe.d/udf.conf
-sed -i '$a install udf /bin/true' /etc/modprobe.d/udf.conf
-sed -i '$a blacklist udf' /etc/modprobe.d/udf.conf
-rmmod udf
+    # 4 設定/tmp目錄之檔案系統 tmpfs
+    echo "4 設定/tmp目錄之檔案系統 tmpfs"
+    sed -i '$a tmpfs\t\t\t/tmp\t\t\ttmpfs\tdefaults,rw,nosuid,nodev,noexec,relatime\t0 0' /etc/fstab
+    #systemctl unmask tmp.mount
+    #systemctl enable tmp.mount
+    ## sed -i 's/Options=mode=1777,strictatime/Options=mode=1777,strictatime,noexec,nodev,nosuid/g' /etc/systemd/system/local-fs.target.wants/tmp.mount
+    #sed -i 's/\(^Options=mode=1777,strictatime\)/\1,noexec,nodev,nosuid/' /etc/systemd/system/local-fs.target.wants/tmp.mount
 
-# 4 設定/tmp目錄之檔案系統 tmpfs
-echo "4 設定/tmp目錄之檔案系統 tmpfs"
-sed -i '$a tmpfs\t\t\t/tmp\t\t\ttmpfs\tdefaults,rw,nosuid,nodev,noexec,relatime\t0 0' /etc/fstab
-#systemctl unmask tmp.mount
-#systemctl enable tmp.mount
-## sed -i 's/Options=mode=1777,strictatime/Options=mode=1777,strictatime,noexec,nodev,nosuid/g' /etc/systemd/system/local-fs.target.wants/tmp.mount
-#sed -i 's/\(^Options=mode=1777,strictatime\)/\1,noexec,nodev,nosuid/' /etc/systemd/system/local-fs.target.wants/tmp.mount
+    # 5~7 啟用 設定/tmp目錄之nodev,nosuid,noexec選項
+    echo "5~7 啟用 設定/tmp目錄之nodev,nosuid,noexec選項"
+    sed -i '$a /tmp\t\t\t/var/tmp\t\tnone\tdefaults,nodev,nosuid,noexec\t\t0 0' /etc/fstab
 
-# 5~7 啟用 設定/tmp目錄之nodev,nosuid,noexec選項
-echo "5~7 啟用 設定/tmp目錄之nodev,nosuid,noexec選項"
-sed -i '$a /tmp\t\t\t/var/tmp\t\tnone\tdefaults,nodev,nosuid,noexec\t\t0 0' /etc/fstab
+    mount -o remount,nodev,nosuid,noexec /tmp
 
-mount -o remount,nodev,nosuid,noexec /tmp
+    # 08 設定/var目錄之檔案系統 使用獨立分割磁區或邏輯磁區
 
-# 08 設定/var目錄之檔案系統 使用獨立分割磁區或邏輯磁區
+    # 09 設定/var/tmp目錄之檔案系統 使用獨立分割磁區或邏輯磁區
 
-# 09 設定/var/tmp目錄之檔案系統 使用獨立分割磁區或邏輯磁區
+    # 10 設定/var/tmp目錄之nodev選項 啟用
 
-# 10 設定/var/tmp目錄之nodev選項 啟用
+    # 11 設定/var/tmp目錄之nosuid選項 啟用
 
-# 11 設定/var/tmp目錄之nosuid選項 啟用
+    # 12 設定/var/tmp目錄之noexe選項 啟用
 
-# 12 設定/var/tmp目錄之noexe選項 啟用
+    # 13 設定/var/log目錄之檔案系統 使用獨立分割磁區或邏輯磁區
 
-# 13 設定/var/log目錄之檔案系統 使用獨立分割磁區或邏輯磁區
+    # 30 停用autofs服務
+    echo "30 停用autofs服務"
+    systemctl --now disable autofs
 
-# 30 停用autofs服務
-echo "30 停用autofs服務"
-systemctl --now disable autofs
+    # 31 停用USB儲存裝置
+    echo "31 停用USB儲存裝置"
+    touch /etc/modprobe.d/usb-storage.conf
+    echo "# disable usb storage" > /etc/modprobe.d/usb-storage.conf
+    sed -i '$a install usb-storage /bin/true' /etc/modprobe.d/usb-storage.conf
+    sed -i '$a blacklist usb-storage' /etc/modprobe.d/usb-storage.conf
+    rmmod usb-storage
+}
 
-# 31 停用USB儲存裝置
-echo "31 停用USB儲存裝置"
-touch /etc/modprobe.d/usb-storage.conf
-echo "# disable usb storage" > /etc/modprobe.d/usb-storage.conf
-sed -i '$a install usb-storage /bin/true' /etc/modprobe.d/usb-storage.conf
-sed -i '$a blacklist usb-storage' /etc/modprobe.d/usb-storage.conf
-rmmod usb-storage
-
-# =================
-# || 系統設定與維護 ||
-# =================
-echo "==================================="
-echo "== System Config and Maintenance =="
-echo "==================================="
-
-echo "==================================="
-echo "=========== 系統設定與維護 ==========="
-echo "==================================="
-
-# 32 GPG簽章驗證
-echo "32 GPG簽章驗證"
-if grep -q "gpgcheck=1" /etc/yum.conf; then
-    echo "/etc/yum.conf GPG簽章驗證OK!" >> ${FCB_LOG_SUCCESS}
-elif grep -q "gpgcheck=0" /etc/yum.conf; then
-    sed -i 's/gpgcheck=0/gpgcheck=1/g' /etc/yum.conf
-    echo "/etc/yum.conf 已修改 GPG簽章驗證OK!" >> ${FCB_LOG_SUCCESS}
-else
-    echo "/etc/yum.conf GPG簽章驗證「不符合FCB規定」" >> ${FCB_LOG_FAILED}
-fi
-
-if grep -q "gpgcheck=1" /etc/dnf/dnf.conf; then
-    echo "/etc/dnf/dnf.conf GPG簽章驗證OK!" >> ${FCB_LOG_SUCCESS}
-elif grep -q "gpgcheck=0" /etc/dnf/dnf.conf; then
-    sed -i 's/gpgcheck=0/gpgcheck=1/g' /etc/dnf/dnf.conf
-    echo "/etc/dnf/dnf.conf 已修改 GPG簽章驗證OK!" >> ${FCB_LOG_SUCCESS}
-else
-    echo "/etc/dnf/dnf.conf GPG簽章驗證「不符合FCB規定」" >> ${FCB_LOG_FAILED}
-fi
-
-# 33 安裝sudo套件
-echo "33 安裝sudo package"
-dnf install -y sudo
-
-# 34 設定sudo指令使用pty
-echo "34 設定sudo指令使用pty"
-sed -i '$a ##設定sudo指令使用pty' /etc/sudoers
-sed -i '$a Defaults use_pty' /etc/sudoers
-
-# 35 sudo自訂義日誌檔案 啟用
-sed -i '$a ##sudo自訂義日誌檔案' /etc/sudoers
-sed -i '$a Defaults logfile="sudo.log"' /etc/sudoers
-
-# 36 安裝AIDE套件
-dnf install -y aide
-aide --init
-mv /var/lib/aide/aide.db.new.gz /var/lib/aide/aide.db.gz
-
-# 37 每天定期檢查檔案系統完整性
-touch /var/spool/cron/root
-chmod 600 root
-echo "# 檢查檔案系統完整性" > /var/spool/cron/root
-sed -i '$a 0 5 * * * /usr/sbin/aide --check' /var/spool/cron/root
-
-# 38 39 開機載入程式設定檔之所有權
-chown root:root /boot/grub2/grub.cfg
-chown root:root /boot/grub2/grubenv
-chmod 600 /boot/grub2/grub.cfg
-chmod 600 /boot/grub2/grubenv
-
-# 40 開機載入程式之通行碼 設定通行碼
-echo "開機載入程式之通行碼 設定通行碼"
-grub2-setpassword
-grub2-mkconfig -o /boot/grub2/grub.cfg
-
-# 41 啟用單一使用者模式身份識別
-echo "Ensure authentication required for single user mode."
-sed -i '22s/rescue/emergency/g' /usr/lib/systemd/system/rescue.service
-
-# 42 停用核心傾印功能
-echo "Disbale core dumps"
-sed -i '$a hard core 0' /etc/security/limits.conf
-
-sed -i '$a fs.suid_dumpable = 0' /etc/sysctl.conf
-
-sed -i 's/\#Storage=external/Storage=none/g' /etc/systemd/coredump.conf
-sed -i 's/\#ProcessSizeMax=2G/ProcessSizeMax=0/g' /etc/systemd/coredump.conf
-
-systemctl daemon-reload
-
-# 43 記憶體位址空間配置隨機載入
-sed -i '$a kernel.randomize_va_space = 2' /etc/sysctl.conf
-sysctl -w kernel.randomize_va_space=2
-
-# 44 全系統加密原則是否為FUTURE 或 FIPS
-echo "設定全系統加密原則"
-update-crypto-policies --set FUTURE
-update-crypto-policies
-
-# Set permissions
-# 45~60
-echo "設定passwd shadow group gshadow 檔案權限"
-chown root:root /etc/passwd
-chmod 644 /etc/passwd
-chown root:root /etc/shadow
-chmod 000 /etc/shadow
-chown root:root /etc/group
-chmod 644 /etc/group
-chown root:root /etc/gshadow
-chmod 000 /etc/gshadow
-chown root:root /etc/passwd-
-chmod 644 /etc/passwd-
-chown root:root /etc/shadow-
-chmod 000 /etc/shadow-
-chown root:root /etc/group-
-chmod 644 /etc/group-
-chown root:root /etc/gshadow-
-chmod 000 /etc/gshadow-
-
-# 61 其他使用者寫入具有全域寫入權限之檔案 禁止寫入
-
-# 73 檢查PATH中是否包含 . 或 .. 或路徑開頭不是 /
-echo "Check PATH"
-if [[ "$PATH" == *.:* ]] || [[ "$PATH" == *..:* ]] || [[ "$PATH" != /*:* ]]; then
-    echo "Error: PATH contains invalid entries" >> ${FCB_LOG_ERROR}
-    exit 1
-fi
-
-echo "PATH is valid"
-
-
-# 79 使用者家目錄權限
-# 取得所有使用者清單，nologin /bin/false, root不用顯示
-getent passwd | cut -d ':' -f 1,6,7 | grep -v 'halt\|sync\|shutdown\|nologin\|root\|\/bin\/false' | cut -d ':' -f 2 | xargs chmod 700
-
-# 80 使用者家目錄擁有者
-getent passwd | grep -v 'halt\|sync\|shutdown\|nologin\|root\|\/bin\/false' | while read line; do
-    user=$(echo $line | cut -d: -f1)
-    homepath=$(sh -c "echo ~$user")
-    chown $user:$user $homepath
-done
-
-# 82 使用者家目錄之「.」檔案權限
-getent passwd | grep -v 'halt\|sync\|shutdown\|nologin\|root\|\/bin\/false' | while read line; do
-    user=$(echo $line | cut -d: -f1)
-    homepath=$(sh -c "echo ~$user")
-    cd $homepath
-    chmod 700 .
-done
-
-# 83 使用者家目錄之「.forward」檔案權限
-getent passwd | grep -v 'halt\|sync\|shutdown\|nologin\|root\|\/bin\/false' | while read line; do
-    user=$(echo $line | cut -d: -f1)
-    homepath=$(sh -c "echo ~$user")
-    cd $homepath
-    if [ -f ".forward" ]; then
-        rm .forward
+# 系統設定與維護
+function ConfigurationAndMaintenanceInSystem () {
+    # Log異常檢視
+    # 符合FCB Log
+    FCB_LOG_SUCCESS='/root/FCB_LOG_SUCCESS.txt'
+    # 錯誤需修正檢視Log
+    FCB_LOG_ERROR='/root/FCB_LOG_ERROR.txt'
+    # 執行異常錯誤
+    FCB_LOG_FAILED='/root/FCB_LOG_FAILED.txt'
+    touch ${FCB_LOG_SUCCESS}
+    touch ${FCB_LOG_ERROR}
+    touch ${FCB_LOG_FAILED}
+    
+    # 32 GPG簽章驗證
+    echo "32 GPG簽章驗證"
+    if grep -q "gpgcheck=1" /etc/yum.conf; then
+        echo "/etc/yum.conf GPG簽章驗證OK!" >> ${FCB_LOG_SUCCESS}
+    elif grep -q "gpgcheck=0" /etc/yum.conf; then
+        sed -i 's/gpgcheck=0/gpgcheck=1/g' /etc/yum.conf
+        echo "/etc/yum.conf 已修改 GPG簽章驗證OK!" >> ${FCB_LOG_SUCCESS}
     else
-        echo "$user file .forward not exists."
+        echo "/etc/yum.conf GPG簽章驗證「不符合FCB規定」" >> ${FCB_LOG_FAILED}
     fi
-done
 
-# 84 使用者家目錄之「.netrc」檔案權限
-getent passwd | grep -v 'halt\|sync\|shutdown\|nologin\|root\|\/bin\/false' | while read line; do
-    user=$(echo $line | cut -d: -f1)
-    homepath=$(sh -c "echo ~$user")
-    cd $homepath
-    if [ -f ".netrc" ]; then
-        rm .netrc
+    if grep -q "gpgcheck=1" /etc/dnf/dnf.conf; then
+        echo "/etc/dnf/dnf.conf GPG簽章驗證OK!" >> ${FCB_LOG_SUCCESS}
+    elif grep -q "gpgcheck=0" /etc/dnf/dnf.conf; then
+        sed -i 's/gpgcheck=0/gpgcheck=1/g' /etc/dnf/dnf.conf
+        echo "/etc/dnf/dnf.conf 已修改 GPG簽章驗證OK!" >> ${FCB_LOG_SUCCESS}
     else
-        echo "$user file .netrc not exists."
+        echo "/etc/dnf/dnf.conf GPG簽章驗證「不符合FCB規定」" >> ${FCB_LOG_FAILED}
     fi
-done
 
-# 85 使用者家目錄之「.rhosts」檔案權限
-getent passwd | grep -v 'halt\|sync\|shutdown\|nologin\|root\|\/bin\/false' | while read line; do
-    user=$(echo $line | cut -d: -f1)
-    homepath=$(sh -c "echo ~$user")
-    cd $homepath
-    if [ -f ".rhosts" ]; then
-        rm .rhosts
+    # 33 安裝sudo套件
+    echo "33 安裝sudo package"
+    dnf install -y sudo
+
+    # 34 設定sudo指令使用pty
+    echo "34 設定sudo指令使用pty"
+    sed -i '$a ##設定sudo指令使用pty' /etc/sudoers
+    sed -i '$a Defaults use_pty' /etc/sudoers
+
+    # 35 sudo自訂義日誌檔案 啟用
+    echo "# 35 sudo自訂義日誌檔案 啟用"
+    sed -i '$a ##sudo自訂義日誌檔案' /etc/sudoers
+    sed -i '$a Defaults logfile="sudo.log"' /etc/sudoers
+
+    # 36 安裝AIDE套件
+    echo "36 安裝AIDE套件"
+    dnf install -y aide
+    aide --init
+    mv /var/lib/aide/aide.db.new.gz /var/lib/aide/aide.db.gz
+
+    # 37 每天定期檢查檔案系統完整性
+    touch /var/spool/cron/root
+    chmod 600 root
+    echo "# 檢查檔案系統完整性" > /var/spool/cron/root
+    sed -i '$a 0 5 * * * /usr/sbin/aide --check' /var/spool/cron/root
+
+    # 38 39 開機載入程式設定檔之所有權
+    chown root:root /boot/grub2/grub.cfg
+    chown root:root /boot/grub2/grubenv
+    chmod 600 /boot/grub2/grub.cfg
+    chmod 600 /boot/grub2/grubenv
+
+    # 40 開機載入程式之通行碼 設定通行碼
+    echo "開機載入程式之通行碼 設定通行碼"
+    grub2-setpassword
+    grub2-mkconfig -o /boot/grub2/grub.cfg
+
+    # 41 啟用單一使用者模式身份識別
+    echo "Ensure authentication required for single user mode."
+    sed -i '22s/rescue/emergency/g' /usr/lib/systemd/system/rescue.service
+
+    # 42 停用核心傾印功能
+    echo "Disbale core dumps"
+    sed -i '$a hard core 0' /etc/security/limits.conf
+
+    sed -i '$a fs.suid_dumpable = 0' /etc/sysctl.conf
+
+    sed -i 's/\#Storage=external/Storage=none/g' /etc/systemd/coredump.conf
+    sed -i 's/\#ProcessSizeMax=2G/ProcessSizeMax=0/g' /etc/systemd/coredump.conf
+
+    systemctl daemon-reload
+
+    # 43 記憶體位址空間配置隨機載入
+    sed -i '$a kernel.randomize_va_space = 2' /etc/sysctl.conf
+    sysctl -w kernel.randomize_va_space=2
+
+    # 44 全系統加密原則是否為FUTURE 或 FIPS
+    echo "設定全系統加密原則"
+    update-crypto-policies --set FUTURE
+    update-crypto-policies
+
+    # Set permissions
+    # 45~60
+    echo "設定passwd shadow group gshadow 檔案權限"
+    chown root:root /etc/passwd
+    chmod 644 /etc/passwd
+    chown root:root /etc/shadow
+    chmod 000 /etc/shadow
+    chown root:root /etc/group
+    chmod 644 /etc/group
+    chown root:root /etc/gshadow
+    chmod 000 /etc/gshadow
+    chown root:root /etc/passwd-
+    chmod 644 /etc/passwd-
+    chown root:root /etc/shadow-
+    chmod 000 /etc/shadow-
+    chown root:root /etc/group-
+    chmod 644 /etc/group-
+    chown root:root /etc/gshadow-
+    chmod 000 /etc/gshadow-
+
+    # 61 其他使用者寫入具有全域寫入權限之檔案 禁止寫入
+
+    # 73 檢查PATH中是否包含 . 或 .. 或路徑開頭不是 /
+    echo "Check PATH"
+    if [[ "$PATH" == *.:* ]] || [[ "$PATH" == *..:* ]] || [[ "$PATH" != /*:* ]]; then
+        echo "Error: PATH contains invalid entries" >> ${FCB_LOG_ERROR}
+        exit 1
+    fi
+
+    echo "PATH is valid"
+
+
+    # 79 使用者家目錄權限
+    # 取得所有使用者清單，nologin /bin/false, root不用顯示
+    getent passwd | cut -d ':' -f 1,6,7 | grep -v 'halt\|sync\|shutdown\|nologin\|root\|\/bin\/false' | cut -d ':' -f 2 | xargs chmod 700
+
+    # 80 使用者家目錄擁有者
+    getent passwd | grep -v 'halt\|sync\|shutdown\|nologin\|root\|\/bin\/false' | while read line; do
+        user=$(echo $line | cut -d: -f1)
+        homepath=$(sh -c "echo ~$user")
+        chown $user:$user $homepath
+    done
+
+    # 82 使用者家目錄之「.」檔案權限
+    getent passwd | grep -v 'halt\|sync\|shutdown\|nologin\|root\|\/bin\/false' | while read line; do
+        user=$(echo $line | cut -d: -f1)
+        homepath=$(sh -c "echo ~$user")
+        cd $homepath
+        chmod 700 .
+    done
+
+    # 83 使用者家目錄之「.forward」檔案權限
+    getent passwd | grep -v 'halt\|sync\|shutdown\|nologin\|root\|\/bin\/false' | while read line; do
+        user=$(echo $line | cut -d: -f1)
+        homepath=$(sh -c "echo ~$user")
+        cd $homepath
+        if [ -f ".forward" ]; then
+            rm .forward
+        else
+            echo "$user file .forward not exists."
+        fi
+    done
+
+    # 84 使用者家目錄之「.netrc」檔案權限
+    getent passwd | grep -v 'halt\|sync\|shutdown\|nologin\|root\|\/bin\/false' | while read line; do
+        user=$(echo $line | cut -d: -f1)
+        homepath=$(sh -c "echo ~$user")
+        cd $homepath
+        if [ -f ".netrc" ]; then
+            rm .netrc
+        else
+            echo "$user file .netrc not exists."
+        fi
+    done
+
+    # 85 使用者家目錄之「.rhosts」檔案權限
+    getent passwd | grep -v 'halt\|sync\|shutdown\|nologin\|root\|\/bin\/false' | while read line; do
+        user=$(echo $line | cut -d: -f1)
+        homepath=$(sh -c "echo ~$user")
+        cd $homepath
+        if [ -f ".rhosts" ]; then
+            rm .rhosts
+        else
+            echo "$user file .rhosts not exists."
+        fi
+    done
+}
+
+# 系統服務
+function ServiceSystem () {
+    echo "92 remove xinetd package"
+    XinetdPackage='xinetd'
+    if rpm -q "${XinetdPackage}" >/dev/null; then
+        systemctl stop ${XinetdPackage}
+        systemctl disable ${XinetdPackage}
+        dnf remove -y ${XinetdPackage}
+        echo "${XinetdPackage} Package has been removed" >> ${FCB_LOG_SUCCESS}
     else
-        echo "$user file .rhosts not exists."
+        echo "${XinetdPackage} package not installed." >> ${FCB_LOG_SUCCESS}
     fi
-done
 
+    # 93 chrony校時設定
 
-# 92 remove xinetd package
-XinetdService='xinetd'
-IS_STATUS="systemctl status ${XinetdService}"
-if [ "${IS_STATUS}" == "Unit ${XinetdService}.service could not be found." ]; then
-    echo "${XinetdService} service not installed on Red Hat Linux 9" >> ${FCB_LOG_SUCCESS}
-else
-    systemctl stop ${XinetdService}
-    systemctl disable ${XinetdService}
-    dnf remove -y ${XinetdService}
-    echo "${XinetdService} Package has been removed" >> ${FCB_LOG_SUCCESS}
-fi
+    echo "94 disable rsyncd service"
+    RsyncdPackage='rsyncd'
+    if rpm -q "${RsyncdPackage}" >/dev/null; then
+        systemctl stop ${RsyncdPackage}
+        systemctl disable ${RsyncdPackage}
+        echo "${RsyncdPackage} Package has been disabled." >> ${FCB_LOG_SUCCESS}
+    else
+        echo "${RsyncdPackage} package not installed." >> ${FCB_LOG_SUCCESS}
+    fi
 
-# 93 chrony校時設定
+    echo "95 disable avahi-daemon service"
+    AvahiPackage='avahi'
+    if rpm -q "${AvahiPackage}" >/dev/null; then
+        systemctl --now disable ${AvahiPackage}-daemon
+        echo "${AvahiPackage} Package has been disabled." >> ${FCB_LOG_SUCCESS}
+    else
+        echo "${AvahiPackage} package not installed." >> ${FCB_LOG_SUCCESS}
+    fi
 
-# 94 disable rsyncd service
-RsyncdService='rsyncd'
-IS_ACTIVE="systemctl is-active ${RsyncdService}.service"
-if [ "$IS_ACTIVE" == "inactive" ]; then
-    echo "${RsyncdService} is not active." >> ${FCB_LOG_SUCCESS}
-else 
-    systemctl stop ${RsyncdService}
-    systemctl --now disable ${RsyncdService}
-    echo "Closed ${RsyncdService} service." >> ${FCB_LOG_SUCCESS}
-fi
+    # 96 disable snmp service
+    if rpm -q "net-snmp" >/dev/null; then
+        systemctl --now disable snmpd
+        echo "snmp Package has been disabled." >> ${FCB_LOG_SUCCESS}
+    else
+        echo "snmp package not installed." >> ${FCB_LOG_SUCCESS}
+    fi
+    # 97 disable Squid service
+    systemctl stop squid
+    systemctl --now disable squid
 
-# 95 disable avahi-daemon service
-AvahiService='avahi-daemon'
-IS_ACTIVE="systemctl is-active ${AvahiService}.service"
-if [ "$IS_ACTIVE" == "inactive" ]; then
-    echo "Closed ${AvahiService} service."
-else
-    systemctl stop ${AvahiService}
-    systemctl --now disable ${AvahiService}
-    echo "${AvahiService} is not active." >> ${FCB_LOG_SUCCESS}
-fi
+    # 98 disable Samba service
+    systemctl stop smb
+    systemctl --now disable smb
 
-# 96 disable snmp service
-systemctl stop snmpd
-systemctl --now disable snmpd
+    # 99 disable FTP service
+    systemctl stop vsftpd
+    systemctl --now disable vsftpd
 
-# 97 disable Squid service
-systemctl stop squid
-systemctl --now disable squid
+    # 100 disable NIS service
+    systemctl stop ypserv
+    systemctl --now disable ypserv
 
-# 98 disable Samba service
-systemctl stop smb
-systemctl --now disable smb
+    # 101 enable kdump service
+    systemctl start kdump.service
+    systemctl --now enable kdump.service
 
-# 99 disable FTP service
-systemctl stop vsftpd
-systemctl --now disable vsftpd
+    # 102 remove ypbind package NIS用戶端套件
+    systemctl stop ypbind
+    systemctl --now disable ypbind
+    dnf remove -y ypbind
 
-# 100 disable NIS service
-systemctl stop ypserv
-systemctl --now disable ypserv
+    # 103 remove telnet-client package
+    # 104 remove telnet-server package
+    systemctl stop telnet.socket
+    systemctl --now disable telnet.socket
+    dnf remove -y telnet
+    dnf remove -y telnet-server
 
-# 101 enable kdump service
-systemctl start kdump.service
-systemctl --now enable kdump.service
+    # 105 remove rsh-server
+    dnf remove rsh-server
 
-# 102 remove ypbind package NIS用戶端套件
-systemctl stop ypbind
-systemctl --now disable ypbind
-dnf remove -y ypbind
+    # 106 remove tftp package
+    dnf remove -y tftp-server
 
-# 103 remove telnet-client package
-# 104 remove telnet-server package
-systemctl stop telnet.socket
-systemctl --now disable telnet.socket
-dnf remove -y telnet
-dnf remove -y telnet-server
-
-# 105 remove rsh-server
-dnf remove rsh-server
-
-# 106 remove tftp package
-dnf remove -y tftp-server
-
-# 107 更新套件後移除舊版本元件
-sed -i '$a clean_requirements_on_remove=True' /etc/yum.conf
-sed -i '$a clean_requirements_on_remove=True' /etc/dnf.conf
+    # 107 更新套件後移除舊版本元件
+    sed -i '$a clean_requirements_on_remove=True' /etc/yum.conf
+    sed -i '$a clean_requirements_on_remove=True' /etc/dnf.conf
+}
 
 # 網路設定
 echo "=========================="
@@ -884,6 +884,10 @@ echo "==================================="
 echo "===== Firewalld Configuration ====="
 echo "==================================="
 
+# ====================================
+# === Change firewalld or ntfables ===
+# ====================================
+
 # 1 安裝firewalld防火牆套件
 dnf install -y firewalld
 
@@ -999,3 +1003,19 @@ find / -name *.shosts -exec rm {} \;
 # 31 停用覆寫全系統加密原則 (預設停用)
 
 systemctl restart sshd
+
+echo "===================================="
+echo "======= DISK and File System ======="
+echo "===================================="
+echo "===================================="
+echo "=========== 磁碟與檔案系統 ==========="
+echo "===================================="
+#DiskFilesystem
+
+echo "============================================="
+echo "== configuration and maintenance in system =="
+echo "============================================="
+echo "==================================="
+echo "=========== 系統設定與維護 ==========="
+echo "==================================="
+#ConfigurationAndMaintenanceInSystem
