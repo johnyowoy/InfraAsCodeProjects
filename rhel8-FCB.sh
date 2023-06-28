@@ -159,27 +159,31 @@ function ConfigurationAndMaintenanceInSystem () {
     mv /var/lib/aide/aide.db.new.gz /var/lib/aide/aide.db.gz
 
     # 37 每天定期檢查檔案系統完整性
+    echo "37 每天定期檢查檔案系統完整性"
     touch /var/spool/cron/root
     chmod 600 root
     echo "# 檢查檔案系統完整性" > /var/spool/cron/root
     sed -i '$a 0 5 * * * /usr/sbin/aide --check' /var/spool/cron/root
 
     # 38 39 開機載入程式設定檔之所有權
+    echo "38 39 開機載入程式設定檔之所有權"
     chown root:root /boot/grub2/grub.cfg
     chown root:root /boot/grub2/grubenv
     chmod 600 /boot/grub2/grub.cfg
     chmod 600 /boot/grub2/grubenv
 
     # 40 開機載入程式之通行碼 設定通行碼
-    echo "開機載入程式之通行碼 設定通行碼"
+    echo "40 開機載入程式之通行碼 設定通行碼"
     grub2-setpassword
     grub2-mkconfig -o /boot/grub2/grub.cfg
 
     # 41 啟用單一使用者模式身份識別
+    echo "41 啟用單一使用者模式身份識別"
     echo "Ensure authentication required for single user mode."
     sed -i '22s/rescue/emergency/g' /usr/lib/systemd/system/rescue.service
 
     # 42 停用核心傾印功能
+    echo "42 停用核心傾印功能"
     echo "Disbale core dumps"
     sed -i '$a hard core 0' /etc/security/limits.conf
 
@@ -191,17 +195,18 @@ function ConfigurationAndMaintenanceInSystem () {
     systemctl daemon-reload
 
     # 43 記憶體位址空間配置隨機載入
+    echo "43 記憶體位址空間配置隨機載入"
     sed -i '$a kernel.randomize_va_space = 2' /etc/sysctl.conf
     sysctl -w kernel.randomize_va_space=2
 
     # 44 全系統加密原則是否為FUTURE 或 FIPS
-    echo "設定全系統加密原則"
+    echo "44 設定全系統加密原則"
     update-crypto-policies --set FUTURE
     update-crypto-policies
 
     # Set permissions
     # 45~60
-    echo "設定passwd shadow group gshadow 檔案權限"
+    echo "45~60 設定passwd shadow group gshadow 檔案權限"
     chown root:root /etc/passwd
     chmod 644 /etc/passwd
     chown root:root /etc/shadow
@@ -287,223 +292,140 @@ function ConfigurationAndMaintenanceInSystem () {
     done
 }
 
-# 系統服務
+# 系統服務、安裝與維護軟體
 function ServiceSystem () {
-    echo "92 remove xinetd package"
-    XinetdPackage='xinetd'
-    if rpm -q "${XinetdPackage}" >/dev/null; then
-        systemctl stop ${XinetdPackage}
-        systemctl disable ${XinetdPackage}
-        dnf remove -y ${XinetdPackage}
-        echo "${XinetdPackage} Package has been removed" >> ${FCB_LOG_SUCCESS}
-    else
-        echo "${XinetdPackage} package not installed." >> ${FCB_LOG_SUCCESS}
-    fi
-
-    # 93 chrony校時設定
-
-    echo "94 disable rsyncd service"
-    RsyncdPackage='rsyncd'
-    if rpm -q "${RsyncdPackage}" >/dev/null; then
-        systemctl stop ${RsyncdPackage}
-        systemctl disable ${RsyncdPackage}
-        echo "${RsyncdPackage} Package has been disabled." >> ${FCB_LOG_SUCCESS}
-    else
-        echo "${RsyncdPackage} package not installed." >> ${FCB_LOG_SUCCESS}
-    fi
-
     echo "95 disable avahi-daemon service"
-    AvahiPackage='avahi'
-    if rpm -q "${AvahiPackage}" >/dev/null; then
-        systemctl --now disable ${AvahiPackage}-daemon
-        echo "${AvahiPackage} Package has been disabled." >> ${FCB_LOG_SUCCESS}
-    else
-        echo "${AvahiPackage} package not installed." >> ${FCB_LOG_SUCCESS}
-    fi
+    echo "96 disable snmp service"
+    echo "97 disable squid service"
+    echo "98 disable Samba service"
+    echo "99 disable FTP service"
+    echo "100 disable NIS service"
+    declare -a package_names=("avahi" "net-snmp" "squid" "samba" "vsftpd" "ypserv")
+    declare -a service_names=("avahi-daemon" "snmpd" "squid" "smb" "vsftpd" "ypserv")
+    for index in ${!package_names[@]}; do
+        package_name=${package_names[$index]}
+        service_name=${service_names[$index]}
+        
+        if rpm -q "$package_name" >/dev/null 2>&1; then
+            echo "package $package_name is installed"
+            echo "Disabling service: $service_name"
+            systemctl --now disable $service_name
+        else
+            echo "package $package_name is NOT installed."
+        fi
+    done
 
-    # 96 disable snmp service
-    if rpm -q "net-snmp" >/dev/null; then
-        systemctl --now disable snmpd
-        echo "snmp Package has been disabled." >> ${FCB_LOG_SUCCESS}
-    else
-        echo "snmp package not installed." >> ${FCB_LOG_SUCCESS}
-    fi
-    # 97 disable Squid service
-    systemctl stop squid
-    systemctl --now disable squid
+    echo "92 102~106  移除xinetd套件 NIS用戶端 telnet用戶端 telnet伺服器 rsh伺服器 tftp伺服器"
+    declare -a remove_package_names=("xinetd" "ypbind" "telnet" "telnet-server" "rsh-server" "tftp-server")
+    for remove_package_name in ${remove_package_names[@]}; do
+        if rpm -q "$remove_package_name" >/dev/null 2>&1; then
+            echo "removing package: $remove_package_name"
+            dnf remove $remove_package_name
+        else
+            echo "package $remove_package_name is NOT installed."
+        fi
+    done
 
-    # 98 disable Samba service
-    systemctl stop smb
-    systemctl --now disable smb
-
-    # 99 disable FTP service
-    systemctl stop vsftpd
-    systemctl --now disable vsftpd
-
-    # 100 disable NIS service
-    systemctl stop ypserv
-    systemctl --now disable ypserv
-
-    # 101 enable kdump service
-    systemctl start kdump.service
+    echo "101 enable kdump service"
     systemctl --now enable kdump.service
 
-    # 102 remove ypbind package NIS用戶端套件
-    systemctl stop ypbind
-    systemctl --now disable ypbind
-    dnf remove -y ypbind
-
-    # 103 remove telnet-client package
-    # 104 remove telnet-server package
-    systemctl stop telnet.socket
-    systemctl --now disable telnet.socket
-    dnf remove -y telnet
-    dnf remove -y telnet-server
-
-    # 105 remove rsh-server
-    dnf remove rsh-server
-
-    # 106 remove tftp package
-    dnf remove -y tftp-server
-
-    # 107 更新套件後移除舊版本元件
+    echo "107 更新套件後移除舊版本元件"
     sed -i '$a clean_requirements_on_remove=True' /etc/yum.conf
     sed -i '$a clean_requirements_on_remove=True' /etc/dnf.conf
+
+    echo "93 chrony校時設定"
+    echo "94 disable rsyncd service"
 }
 
 # 網路設定
-echo "=========================="
-echo "===== NETWORK Config ====="
-echo "=========================="
+function ConfiguringNetworks () {
+    sysctl_conf='/etc/sysctl.conf'
+    echo "108 停用IP轉送功能"
+    sysctl -w net.ipv4.ip_forward=0 >> ${sysctl_conf}
+    sysctl -w net.ipv6.conf.all.forwarding=0 >> ${sysctl_conf}
 
-sysctl_conf='/etc/sysctl.conf'
-sysctl_d='/etc/sysctl.d/*.conf'
+    echo "109 所有網路介面禁止傳送ICMP重新導入封包"
+    sysctl -w net.ipv4.conf.all.send_redirects=0 >> ${sysctl_conf}
 
-# 108 IP轉送
+    echo "110 預設網路介面禁止傳送ICMP重新導向封包"
+    sysctl -w net.ipv4.conf.default.send_redirects=0 >> ${sysctl_conf}
 
-# 109 所有網路介面禁止傳送ICMP重新導入封包
-sed -i '$a net.ipv4.conf.all.send_redirects=0' ${sysctl_conf}
-sed -i '$a net.ipv4.conf.all.send_redirects=0' ${sysctl_d}
-sysctl -w net.ipv4.conf.all.send_redirects=0
+    echo "111 所有網路介面阻擋來源路由封包"
+    sysctl -w net.ipv4.conf.all.accept_source_route=0 >> ${sysctl_conf}
+    sysctl -w net.ipv6.conf.all.accept_source_route=0 >> ${sysctl_conf}
 
-# 110 預設網路介面禁止傳送ICMP重新導向封包
-sed -i '$a net.ipv4.conf.default.send_redirects=0' ${sysctl_d}
-sysctl -w  net.ipv4.conf.default.send_redirects=0
+    echo "112 預設網路介面阻擋來源路由封包"
+    sysctl -w net.ipv4.conf.default.accept_source_route=0 >> ${sysctl_conf}
+    sysctl -w net.ipv6.conf.default.accept_source_route=0 >> ${sysctl_conf}
 
-# 111 所有網路介面阻擋來源路由封包
-sed -i '$a net.ipv4.conf.all.accept_source_route=0' ${sysctl_conf}
-sed -i '$a net.ipv6.conf.all.accept_source_route=0' ${sysctl_conf}
-sed -i '$a net.ipv4.conf.all.accept_source_route=0' ${sysctl_d}
-sed -i '$a net.ipv6.conf.all.accept_source_route=0' ${sysctl_d}
-sysctl -w net.ipv4.conf.all.accept_source_route=0
-sysctl -w net.ipv6.conf.all.accept_source_route=0
+    echo "113 所有網路介面阻擋ICMP重新導向封包"
+    sysctl -w net.ipv4.conf.all.accept_redirects=0 >> ${sysctl_conf}
+    sysctl -w net.ipv6.conf.all.accept_redirects=0 >> ${sysctl_conf}
 
-# 112 預設網路介面阻擋來源路由封包
-sed -i '$a net.ipv4.conf.default.accept_source_route=0' ${sysctl_conf}
-sed -i '$a net.ipv6.conf.default.accept_source_route=0' ${sysctl_conf}
-sed -i '$a net.ipv4.conf.default.accept_source_route=0' ${sysctl_d}
-sed -i '$a net.ipv6.conf.default.accept_source_route=0' ${sysctl_d}
-sysctl -w net.ipv4.conf.default.accept_source_route=0
-sysctl -w net.ipv6.conf.default.accept_source_route=0
+    echo "114 預設網路介面阻擋ICMP重新導向封包"
+    sysctl -w net.ipv4.conf.default.accept_redirects=0 >> ${sysctl_conf}
+    sysctl -w net.ipv6.conf.default.accept_redirects=0 >> ${sysctl_conf}
 
-# 113 所有網路介面阻擋ICMP重新導向封包
-sed -i '$a net.ipv4.conf.all.accept_redirects=0' ${sysctl_conf}
-sed -i '$a net.ipv6.conf.all.accept_redirects=0' ${sysctl_conf}
-sed -i '$a net.ipv4.conf.all.accept_redirects=0' ${sysctl_d}
-sed -i '$a net.ipv6.conf.all.accept_redirects=0' ${sysctl_d}
-sysctl -w net.ipv4.conf.all.accept_redirects=0
-sysctl -w net.ipv6.conf.all.accept_redirects=0
+    echo "115 所有網路介面阻擋安全之IMCP重新封包"
+    sysctl -w net.ipv4.conf.all.secure_redirects=0 >> ${sysctl_conf}
 
-# 114 預設網路介面阻擋ICMP重新導向封包
-sed -i '$a net.ipv4.conf.default.accept_redirects=0' ${sysctl_conf}
-sed -i '$a net.ipv6.conf.default.accept_redirects=0' ${sysctl_conf}
-sed -i '$a net.ipv4.conf.default.accept_redirects=0' ${sysctl_d}
-sed -i '$a net.ipv6.conf.default.accept_redirects=0' ${sysctl_d}
-sysctl -w net.ipv4.conf.default.accept_redirects=0
-sysctl -w net.ipv6.conf.default.accept_redirects=0
+    echo "116 預設網路介面阻擋安全之ICMP重新導向封包"
+    sysctl -w net.ipv4.conf.default.secure_redirects=0 >> ${sysctl_conf}
 
-# 115 所有網路介面阻擋安全之IMCP重新封包
-sed -i '$a net.ipv4.conf.all.secure_redirects=0' ${sysctl_conf}
-sed -i '$a net.ipv4.conf.all.secure_redirects=0' ${sysctl_d}
-sysctl -w net.ipv4.conf.all.secure_redirects=0
+    echo "117 所有網路介面紀錄可疑封包"
+    sysctl -w net.ipv4.conf.all.log_martians=1 >> ${sysctl_conf}
 
-# 116 預設網路介面阻擋安全之ICMP重新導向封包
-sed -i '$a net.ipv4.conf.default.secure_redirects=0' ${sysctl_conf}
-sed -i '$a net.ipv4.conf.default.secure_redirects=0' ${sysctl_d}
-sysctl -w net.ipv4.conf.default.secure_redirects=0
+    echo "118 預設網路介面紀錄可疑封包"
+    sysctl -w net.ipv4.conf.default.log_martians=1 >> ${sysctl_conf}
 
-# 117 所有網路介面紀錄可疑封包
-sed -i '$a net.ipv4.conf.all.log_martians=1' ${sysctl_conf}
-sed -i '$a net.ipv4.conf.all.log_martians=1' ${sysctl_d}
-sysctl -w net.ipv4.conf.all.log_martians=1
+    echo "119 不回應ICMP廣播要求"
+    sysctl -w net.ipv4.icmp_echo_ignore_broadcasts=1 >> ${sysctl_conf}
 
-# 118 預設網路介面紀錄可疑封包
-sed -i '$a net.ipv4.conf.default.log_martians=1' ${sysctl_conf}
-sed -i '$a net.ipv4.conf.default.log_martians=1' ${sysctl_d}
-sysctl -w net.ipv4.conf.default.log_martians=1
+    echo "120 忽略 造之ICMP錯誤訊息"
+    sysctl -w net.ipv4.icmp_ignore_bogus_error_responses=1 >> ${sysctl_conf}
 
-# 119 不回應ICMP廣播要求
-sed -i '$a net.ipv4.icmp_echo_ignore_broadcasts=1' ${sysctl_conf}
-sed -i '$a net.ipv4.icmp_echo_ignore_broadcasts=1' ${sysctl_d}
-sysctl -w net.ipv4.icmp_echo_ignore_broadcasts=1
+    echo "121 所有網路介面啟用逆向路徑過濾功能"
+    sysctl -w net.ipv4.conf.all.rp_filter=1 >> ${sysctl_conf}
 
-# 120 忽略 造之ICMP錯誤訊息
-sed -i '$a net.ipv4.icmp_ignore_bogus_error_responses=1' ${sysctl_conf}
-sed -i '$a net.ipv4.icmp_ignore_bogus_error_responses=1' ${sysctl_d}
-sysctl -w net.ipv4.icmp_ignore_bogus_error_responses=1
+    echo "122 預設網路介面啟用逆向路徑過濾功能"
+    sysctl -w net.ipv4.conf.default.rp_filter=1 >> ${sysctl_conf}
 
-# 121 所有網路介面啟用逆向路徑過濾功能
-sed -i '$a net.ipv4.conf.all.rp_filter=1' ${sysctl_conf}
-sed -i '$a net.ipv4.conf.all.rp_filter=1' ${sysctl_d}
-sysctl -w net.ipv4.conf.all.rp_filter=1
+    echo "123 TCP SYN cookies"
+    sysctl -w net.ipv4.tcp_syncookies=1 >> ${sysctl_conf}
 
-# 122 預設網路介面啟用逆向路徑過濾功能
-sed -i '$a net.ipv4.conf.default.rp_filter=1' ${sysctl_conf}
-sed -i '$a net.ipv4.conf.default.rp_filter=1' ${sysctl_d}
-sysctl -w net.ipv4.conf.default.rp_filter=1
+    echo "124 所有網路介面阻擋IPv6路由器公告訊息"
+    sysctl -w net.ipv6.all.accept_ra=0 >> ${sysctl_conf}
 
-# 123 TCP SYN cookies
-sed -i '$a net.ipv4.tcp_syncookies=1' ${sysctl_conf}
-sed -i '$a net.ipv4.tcp_syncookies=1' ${sysctl_d}
-sysctl -w net.ipv4.tcp_syncookies=1
+    echo "125 預設網路介面阻擋IPv6路由器公告訊息"
+    sysctl -w net.ipv6.conf.default.accept_ra=0 >> ${sysctl_conf}
 
-# 124 所有網路介面阻擋IPv6路由器公告訊息
-sed -i '$a net.ipv6.all.accept_ra=0' ${sysctl_conf}
-sed -i '$a net.ipv6.all.accept_ra=0' ${sysctl_d}
-sysctl -w net.ipv6.all.accept_ra=0
+    sysctl -p ${sysctl_conf}
 
-# 125 預設網路介面阻擋IPv6路由器公告訊息
-sed -i '$a net.ipv6.conf.default.accept_ra=0' ${sysctl_conf}
-sed -i '$a net.ipv6.conf.default.accept_ra=0' ${sysctl_d}
-sysctl -w net.ipv6.conf.default.accept_ra=0
+    echo "126 停用DCCP協定"
+    touch /etc/modprobe.d/dccp.conf
+    sed -i '$a install dccp /bin/true' /etc/modprobe.d/dccp.conf
+    sed -i '$a blacklist dccp' /etc/modprobe.d/dccp.conf
 
-sysctl -w net.ipv4.route.flush=1
-sysctl -w net.ipv6.route.flush=1
+    echo "127 停用SCTP協定"
+    touch /etc/modprobe.d/sctp.conf
+    sed -i '$a install sctp /bin/true' /etc/modprobe.d/sctp.conf
+    sed -i '$a blacklist sctp' /etc/modprobe.d/sctp.conf
 
-# 126 DCCP協定
-touch /etc/modprobe.d/dccp.conf
-sed -i '$a install dccp /bin/true' /etc/modprobe.d/dccp.conf
-sed -i '$a blacklist dccp' /etc/modprobe.d/dccp.conf
+    echo "128 停用RDS協定"
+    touch /etc/modprobe.d/rds.conf
+    sed -i '$a install rds /bin/true' /etc/modprobe.d/rds.conf
+    sed -i '$a blacklist rds' /etc/modprobe.d/rds.conf
 
-# 127 SCTP協定
-touch /etc/modprobe.d/sctp.conf
-sed -i '$a install sctp /bin/true' /etc/modprobe.d/sctp.conf
-sed -i '$a blacklist sctp' /etc/modprobe.d/sctp.conf
+    echo "129 停用TIPC協定"
+    touch /etc/modprobe.d/tipc.conf
+    sed -i '$a install tipc /bin/true' /etc/modprobe.d/tipc.conf
+    sed -i '$a blacklist tipc' /etc/modprobe.d/tipc.conf
 
-# 128 RDS協定
-touch /etc/modprobe.d/rds.conf
-sed -i '$a install rds /bin/true' /etc/modprobe.d/rds.conf
-sed -i '$a blacklist rds' /etc/modprobe.d/rds.conf
+    echo "130 停用無線網路介面"
+    nmcli radio all off
 
-# 129 TIPC協定
-touch /etc/modprobe.d/tipc.conf
-sed -i '$a install tipc /bin/true' /etc/modprobe.d/tipc.conf
-sed -i '$a blacklist tipc' /etc/modprobe.d/tipc.conf
-
-# 130 停用無線網路介面
-nmcli radio all off
-
-# 131 網路介面混雜模式
+    # 131 網路介面混雜模式
+}
 
 
 # 日誌與稽核
@@ -1019,3 +941,11 @@ echo "==================================="
 echo "=========== 系統設定與維護 ==========="
 echo "==================================="
 #ConfigurationAndMaintenanceInSystem
+
+echo "================================="
+echo "===== Configuration Network ====="
+echo "================================="
+echo "==================================="
+echo "============= 網路設定 ============="
+echo "==================================="
+#ConfiguringNetworks
