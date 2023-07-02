@@ -196,8 +196,7 @@ function ConfigurationAndMaintenanceInSystem () {
 
     # 43 記憶體位址空間配置隨機載入
     echo "43 記憶體位址空間配置隨機載入"
-    sed -i '$a kernel.randomize_va_space = 2' /etc/sysctl.conf
-    sysctl -w kernel.randomize_va_space=2
+    sysctl -w kernel.randomize_va_space=2 >> /etc/sysctl.conf
 
     # 44 全系統加密原則是否為FUTURE 或 FIPS
     echo "44 設定全系統加密原則"
@@ -424,50 +423,72 @@ function ConfiguringNetworks () {
     echo "130 停用無線網路介面"
     nmcli radio all off
 
-    # 131 網路介面混雜模式
+    echo "131 停用網路介面混雜模式"
+    if ip link | grep -i promisc >/dev/null; then
+        echo "檢查OK"
+    else
+        echo "請使用指令"
+        echo "ip link set dev (網路介面裝置名稱) multicast off promisc off"
+    fi
 }
 
-
 # 日誌與稽核
-echo "=========================="
-echo "======= LOG Config ======="
-echo "=========================="
+function AuditLogConfig () {
+    echo "132 install auditd package"
+    dnf install audit audit-libs
 
-# 132 install auditd package
-dnf install audit audit-libs
+    echo "133 enable auditd service"
+    systemctl start auditd
+    systemctl --now enable auditd
 
-# 133 enable auditd service
-systemctl start auditd
-systemctl --now enable auditd
+    echo "134 稽核auditd服務啟動前之程序"
+    if cat /etc/default/grub | grep "^GRUB_CMDLINE_LINUX=.*audit=1.*" >/dev/null; then
+        echo "/etc/default/grub 稽核auditd=1 檢查OK!"
+    else
+        sed -i 's/\(^GRUB_CMDLINE_LINUX=".*\)\("\)/\1 audit=1\2/' /etc/default/grub
+        echo "/etc/default/grub 已「增加」稽核auditd=1"
+    fi
 
-# 134 稽核auditd服務啟動前之程序
-sed -i 's/\(^GRUB_CMDLINE_LINUX=".*\)\("\)/\1 audit=1\2/' /etc/default/grub
+    echo "135 稽核待辦事項數量限制"
+    if cat /etc/default/grub | grep "^GRUB_CMDLINE_LINUX=.*audit_backlog_limit=8192.*" >/dev/null; then
+        echo "/etc/default/grub 稽核待辦事項數量限制 audit_backlog_limit=8192 檢查OK"
+    else
+        sed -i 's/\(^GRUB_CMDLINE_LINUX=".*\)\("\)/\1 audit_backlog_limit=8192\2/' /etc/default/grub
+        echo "/etc/default/grub 已「增加」稽核待辦事項數量限制 audit_backlog_limit=8192"
+    fi
+    grub2-mkconfig -o /boot/grub2/grub.cfg
 
-# 135 稽核待辦事項數量限制
-sed -i 's/\(^GRUB_CMDLINE_LINUX=".*\)\("\)/\1 audit_backlog_limit=8192\2/' /etc/default/grub
+    echo "136 稽核處理失敗時通知系統管理者"
+    if cat /etc/aliases | grep postmaster:.*root >/dev/null; then
+        echo "稽核處理失敗時通知系統管理者 檢查OK"
+    else
+        sed 's/\(^postmaster:.*\)/postmaster\troot/' /etc/aliases
+        echo "稽核處理失敗 已設定通知系統管理者root"
+    fi
 
-grub2-mkconfig -o /boot/grub2/grub.cfg
+    echo "137 稽核日誌「檔案」所有權"
+    if ls -l /var/log/audit/audit.log | awk '{print $3 " " $4}' | grep 'root\|root' >/dev/null; then
+        echo "/var/log/audit/audit.log 稽核日誌「檔案」所有權 檢查OK"
+    else
+        grep -iw log_file /etc/audit/auditd.conf | awk '{print $3}' | xargs -I {} chown root:root {}
+        echo "/var/log/audit/audit.log 稽核日誌「檔案」所有權 已設定root"
+    fi
 
-# 136 稽核處理失敗時通知系統管理者
-sed -i '$a postmaster:\troot' /etc/aliases
+    echo "138 稽核日誌「檔案」權限"
+    grep -iw log_file /etc/audit/auditd.conf | awk '{print $3}' | xargs -I {} chmod 600 {}
 
-# 137 稽核日誌檔案所有權
-grep -iw log_file /etc/audit/auditd.conf | awk '{print $3}' | xargs -I {} chown root:root {}
+    echo "139 稽核日誌「目錄」所有權"
+    grep -iw log_file /etc/audit/auditd.conf | awk '{print $3}' | sed 's/\(.*\)\(\/.*..*\)/\1/'
+    echo "140 稽核日誌目錄權限"
 
-# 138 稽核日誌檔案權限
-grep -iw log_file /etc/audit/auditd.conf | awk '{print $3}' | xargs -I {} chmod 600 {}
 
-# 139 稽核日誌目錄所有權
-grep -iw log_file /etc/audit/auditd.conf | awk '{print $3}' | sed 's,/[^/]*$,,' | uniq | xargs -I {} chown root:root {}
+    echo "141 稽核規則檔案權限"
+    chmod 600 /etc/audit/rules.d/audit.rules
 
-# 140 稽核日誌目錄權限
-grep -iw log_file /etc/audit/auditd.conf | awk '{print $3}' | sed 's,/[^/]*$,,' | uniq | xargs -I {} chmod 700 {}
+    echo "142 稽核設定檔案權限"
+    chmod 640 /etc/audit/auditd.conf
 
-# 141 稽核規則檔案權限
-chmod 600 /etc/audit/rules.d/audit.rules
-
-# 142 稽核設定檔案權限
-chmod 640 /etc/audit/auditd.conf
+}
 
 # 143 稽核工具權限
 
@@ -949,3 +970,11 @@ echo "==================================="
 echo "============= 網路設定 ============="
 echo "==================================="
 #ConfiguringNetworks
+
+echo "=========================="
+echo "======= LOG Config ======="
+echo "=========================="
+echo "=========================="
+echo "======== 日誌與稽核 ========"
+echo "=========================="
+#AuditLogConfig
