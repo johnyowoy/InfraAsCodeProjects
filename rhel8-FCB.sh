@@ -659,24 +659,6 @@ function AuditLogConfig () {
     fi
 }
 
-# 143 稽核工具權限
-
-# 144 稽核工具所有權
-
-# 145 保護稽核工具
-
-# 146 稽核日誌檔案大小上限
-sed -i 's/max_log_file = 8/max_log_file = 32/g' /etc/audit/auditd.conf
-
-# 147 稽核日誌達到其檔案大小上限之行為
-sed -i 's/max_log_file_action = ROTATE/max_log_file_action = keep_logs/g' /etc/audit/auditd.conf
-
-auditrules='/etc/audid/rules.d/audit.rules'
-
-# 148 紀錄系統管理者活動 啟用
-sed -i '$a -w /etc/sudoers -p wa -k scope' ${auditrules}
-sed -i '$a -w /etc/sudoers.d/ -p wa -k scope' ${auditrules}
-
 # 149 紀錄變更登入與登出資訊事件 啟用
 sed -i '$a -w /var/run/faillock/ -p wa -k logins' ${auditrules}
 sed -i '$a -w /var/log/lastlog -p wa -k logins' ${auditrules}
