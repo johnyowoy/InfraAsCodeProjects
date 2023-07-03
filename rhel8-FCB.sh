@@ -1,7 +1,7 @@
 #!/bin/bash
 # Program
 #   Red Hat Enterprise Linux 8 Systemctl Security Check ShellScript
-#   GCB政府組態基準-Red Hat Enterprise Linux 8
+#   FCB金融組態基準-Red Hat Enterprise Linux 8
 # History
 #   2023/04/19    JINHAU, HUANG
 # Version
@@ -42,39 +42,103 @@ touch ${FCB_LOG_FAILED}
 
 # 磁碟與檔案系統
 function DiskFilesystem () {
-    # 1 停用cramfs檔案系統
+
     echo "1 停用cramfs檔案系統"
-    touch /etc/modprobe.d/cramfs.conf
-    echo "# Ensure mounting of cramfs filesystems is disabled - modprobe" >> /etc/modprobe.d/cramfs.conf
-    sed -i '$a install cramfs /bin/true' /etc/modprobe.d/cramfs.conf
-    sed -i '$a blacklist cramfs' /etc/modprobe.d/cramfs.conf
-    rmmod cramfs
+    if [ -f /etc/modprobe.d/cramfs.conf ]; then
+        cramfsfile='/etc/modprobe.d/cramfs.conf'
+        if grep install' 'cramfs' '\/bin\/true ${cramfsfile} >/dev/null; then
+            if grep blacklist' 'cramfs ${cramfsfile} >/dev/null; then
+                echo "檢查OK"
+            else
+                sed -i '$a blacklist cramfs' ${cramfsfile}
+                rmmod cramfs
+                echo ${cramfsfile}"已新增blacklist cramfs"
+            fi
+        else
+            sed -i '$a install cramfs /bin/true' ${cramfsfile}
+            if grep blacklist' 'cramfs ${cramfsfile} >/dev/null; then
+                rmmod cramfs
+                echo ${cramfsfile}"已新增install cramfs /bin/true"
+            else
+                sed -i '$a blacklist cramfs' ${cramfsfile}
+                rmmod cramfs
+                echo ${cramfsfile}"已新增install cramfs /bin/true"
+                echo ${cramfsfile}"已新增blacklist cramfs"
+            fi
+        fi
+    else
+        touch /etc/modprobe.d/cramfs.conf
+        echo "# Ensure mounting of cramfs filesystems is disabled - modprobe" >> /etc/modprobe.d/cramfs.conf
+        sed -i '$a install cramfs /bin/true' /etc/modprobe.d/cramfs.conf
+        sed -i '$a blacklist cramfs' /etc/modprobe.d/cramfs.conf
+        rmmod cramfs
+    fi
 
-    # 2 停用squashfs檔案系統
     echo "2 停用squashfs檔案系統"
-    touch /etc/modprobe.d/squashfs.conf
-    echo "# Disable Mounting of squashfs Filesystems - modprobe" >> /etc/modprobe.d/squashfs.conf
-    sed -i '$a install squashfs /bin/true' /etc/modprobe.d/squashfs.conf
-    sed -i '$a blacklist squashfs' /etc/modprobe.d/squashfs.conf
-    rmmod squashfs
+    if [ -f /etc/modprobe.d/squashfs.conf ]; then
+        squashfsfile='/etc/modprobe.d/squashfs.conf'
+        if grep install' 'squashfs' '\/bin\/true ${squashfsfile} >/dev/null; then
+            if grep blacklist' 'squashfs ${squashfsfile} >/dev/null; then
+                echo "檢查OK"
+            else
+                sed -i '$a blacklist squashfs' ${squashfsfile}
+                rmmod squashfs
+                echo ${squashfsfile}"已新增blacklist squashfs"
+            fi
+        else
+            sed -i '$a install squashfs /bin/true' ${squashfsfile}
+            if grep blacklist' 'squashfs ${squashfsfile} >/dev/null; then
+                rmmod squashfs
+                echo ${squashfsfile}"已新增install squashfs /bin/true"
+            else
+                sed -i '$a blacklist squashfs' ${squashfsfile}
+                rmmod squashfs
+                echo ${squashfsfile}"已新增install squashfs /bin/true"
+                echo ${squashfsfile}"已新增blacklist squashfs"
+            fi
+        fi
+    else
+        touch /etc/modprobe.d/squashfs.conf
+        echo "# Disable Mounting of squashfs Filesystems - modprobe" >> /etc/modprobe.d/squashfs.conf
+        sed -i '$a install squashfs /bin/true' /etc/modprobe.d/squashfs.conf
+        sed -i '$a blacklist squashfs' /etc/modprobe.d/squashfs.conf
+        rmmod squashfs
+    fi
 
-    # 3 停用udf檔案系統
     echo "3 停用udf檔案系統"
-    touch /etc/modprobe.d/udf.conf
-    echo "# Disable Mounting of udf Filesystems - modprobe" >> /etc/modprobe.d/udf.conf
-    sed -i '$a install udf /bin/true' /etc/modprobe.d/udf.conf
-    sed -i '$a blacklist udf' /etc/modprobe.d/udf.conf
-    rmmod udf
+    if [ -f /etc/modprobe.d/udf.conf ]; then
+        udffile='/etc/modprobe.d/udf.conf'
+        if grep install' 'udf' '\/bin\/true ${udffile} >/dev/null; then
+            if grep blacklist' 'udf ${udffile} >/dev/null; then
+                echo "檢查OK"
+            else
+                sed -i '$a blacklist udf' ${udffile}
+                rmmod udf
+                echo ${udffile}"已新增blacklist udf"
+            fi
+        else
+            sed -i '$a install udf /bin/true' ${udffile}
+            if grep blacklist' 'udf ${udffile} >/dev/null; then
+                rmmod udf
+                echo ${udffile}"已新增install udf /bin/true"
+            else
+                sed -i '$a blacklist udf' ${udffile}
+                rmmod udf
+                echo ${udffile}"已新增install udf /bin/true"
+                echo ${udffile}"已新增blacklist udf"
+            fi
+        fi
+    else
+        touch /etc/modprobe.d/udf.conf
+        echo "# Disable Mounting of udf Filesystems - modprobe" >> /etc/modprobe.d/udf.conf
+        sed -i '$a install udf /bin/true' /etc/modprobe.d/udf.conf
+        sed -i '$a blacklist udf' /etc/modprobe.d/udf.conf
+        rmmod udf
+    fi
 
-    # 4 設定/tmp目錄之檔案系統 tmpfs
     echo "4 設定/tmp目錄之檔案系統 tmpfs"
     sed -i '$a tmpfs\t\t\t/tmp\t\t\ttmpfs\tdefaults,rw,nosuid,nodev,noexec,relatime\t0 0' /etc/fstab
-    #systemctl unmask tmp.mount
-    #systemctl enable tmp.mount
-    ## sed -i 's/Options=mode=1777,strictatime/Options=mode=1777,strictatime,noexec,nodev,nosuid/g' /etc/systemd/system/local-fs.target.wants/tmp.mount
-    #sed -i 's/\(^Options=mode=1777,strictatime\)/\1,noexec,nodev,nosuid/' /etc/systemd/system/local-fs.target.wants/tmp.mount
 
-    # 5~7 啟用 設定/tmp目錄之nodev,nosuid,noexec選項
     echo "5~7 啟用 設定/tmp目錄之nodev,nosuid,noexec選項"
     sed -i '$a /tmp\t\t\t/var/tmp\t\tnone\tdefaults,nodev,nosuid,noexec\t\t0 0' /etc/fstab
 
@@ -466,28 +530,133 @@ function AuditLogConfig () {
         echo "稽核處理失敗 已設定通知系統管理者root"
     fi
 
-    echo "137 稽核日誌「檔案」所有權"
-    if ls -l /var/log/audit/audit.log | awk '{print $3 " " $4}' | grep 'root\|root' >/dev/null; then
-        echo "/var/log/audit/audit.log 稽核日誌「檔案」所有權 檢查OK"
+    echo "137 稽核日誌「檔案」擁有者與群組"
+    if stat -c "%U %G" /var/log/audit/audit.log | grep -E root.*root >/dev/null; then
+        echo "/var/log/audit/audit.log 檢查OK"
     else
         grep -iw log_file /etc/audit/auditd.conf | awk '{print $3}' | xargs -I {} chown root:root {}
-        echo "/var/log/audit/audit.log 稽核日誌「檔案」所有權 已設定root"
+        echo "/var/log/audit/audit.log 已設定root"
     fi
 
     echo "138 稽核日誌「檔案」權限"
-    grep -iw log_file /etc/audit/auditd.conf | awk '{print $3}' | xargs -I {} chmod 600 {}
+    if stat -c "%a" /var/log/audit/audit.log | grep 600 >/dev/null; then
+        echo "/var/log/audit/audit.log 檢查OK"
+    else
+        grep -iw log_file /etc/audit/auditd.conf | awk '{print $3}' | xargs -I {} chmod 600 {}
+        echo "/var/log/audit 已設定600"
+    fi
 
-    echo "139 稽核日誌「目錄」所有權"
-    grep -iw log_file /etc/audit/auditd.conf | awk '{print $3}' | sed 's/\(.*\)\(\/.*..*\)/\1/'
-    echo "140 稽核日誌目錄權限"
+    echo "139 稽核日誌「目錄」擁有者與群組"
+    if stat -c "%U %G" /var/log/audit | grep -E root.*root >/dev/null; then
+        echo "/var/log/audit 檢查OK"
+    else
+        grep -iw log_file /etc/audit/auditd.conf | awk '{print $3}' | sed 's/\(.*\)\(\/.*..*\)/\1/' | xargs -I {} chown root:root {}
+        echo "/var/log/audit 已設定root:root"
+    fi
+    
+    echo "140 稽核日誌「目錄」讀寫執行權限"
+    if stat -c "%a" /var/log/audit | grep 700 >/dev/null; then
+        echo "/var/log/audit 檢查OK"
+    else
+        grep -iw log_file /etc/audit/auditd.conf | awk '{print $3}' | sed 's/\(.*\)\(\/.*..*\)/\1/' | xargs -I {} chmod 700 {}
+        echo "/var/log/audit 已設定700"
+    fi
 
+    echo "141 稽核「規則」「檔案」讀寫執行權限"
+    if stat -c "%a" /etc/audit/rules.d/audit.rules | grep 600 >/dev/null;then
+        echo "/etc/audit/rules.d/audit.rules 檢查OK"
+    else
+        chmod 600 /etc/audit/rules.d/audit.rules
+        echo "/etc/audit/rules.d/audit.rules 已設定600"
+    fi
 
-    echo "141 稽核規則檔案權限"
-    chmod 600 /etc/audit/rules.d/audit.rules
+    echo "142 稽核「設定」「檔案」讀寫執行權限"
+    if stat -c "%a" /etc/audit/auditd.conf | grep 640 >/dev/null; then
+        echo "/etc/audit/auditd.conf  檢查OK"
+    else
+        chmod 640 /etc/audit/auditd.conf
+        echo "/etc/audit/auditd.conf 已設定640"
+    fi
 
-    echo "142 稽核設定檔案權限"
-    chmod 640 /etc/audit/auditd.conf
+    echo "143 稽核工具權限 讀寫執行"
+    declare -a AuditTools=("auditctl" "aureport" "ausearch" "autrace" "auditd" "audisp-remote" "audisp-syslog" "augenrules")
+    for index in ${!AuditTools[@]}; do
+        AuditTool=${AuditTools[$index]}
+        if [ -f "/sbin/${AuditTool}" ]; then
+            if stat -c "%a" /sbin/${AuditTool} | grep 750 >/dev/null; then
+                echo "/sbin/${AuditTool}  檢查OK"
+            else
+                chmod 750 /sbin/${AuditTool}
+                echo "/sbin/${AuditTool} 已設定750"
+            fi
+        else
+            echo "File /sbin/${AuditTool} does not exists"
+        fi
+    done
 
+    echo "144 稽核工具擁有者與群組權限"
+    declare -a AuditTools=("auditctl" "aureport" "ausearch" "autrace" "auditd" "audisp-remote" "audisp-syslog" "augenrules")
+    for index in ${!AuditTools[@]}; do
+        AuditTool=${AuditTools[$index]}
+        if [ -f "/sbin/${AuditTool}" ]; then
+            if stat -c "%U %G" /sbin/${AuditTool} | grep -E root.*root >/dev/null; then
+                echo "/sbin/${AuditTool}  檢查OK"
+            else
+                chown root:root /sbin/${AuditTool}
+                echo "/sbin/${AuditTool} 已設定root:root"
+            fi
+        else
+            echo "File /sbin/${AuditTool} does not exists"
+        fi
+    done
+
+    echo "145 啟用保護稽核工具"
+    if cat /etc/aide.conf | grep AuditConfig.*=.*p+i+n+u+g+s+b+acl+xattrs+sha512 >/dev/null; then
+        echo "/etc/aide.conf 檢查OK"
+    else
+        sed -i '$a AuditConfig = p+i+n+u+g+s+b+acl+xattrs+sha512' /etc/aide.conf
+        echo "/usr/sbin/${AuditTool} 已新增規則"
+    fi
+
+    for index in ${!AuditTools[@]}; do
+        AuditTool=${AuditTools[$index]}
+        if [ -f "/sbin/${AuditTool}" ]; then
+            if cat /etc/aide.conf | grep /usr/sbin/${AuditTool}.*AuditConfig >/dev/null; then
+                echo "/usr/sbin/${AuditTool}  檢查OK"
+            else
+                sed -i '$a /usr/sbin/'${AuditTool}' AuditConfig' /etc/aide.conf
+                echo "/usr/sbin/${AuditTool} 已新增規則"
+            fi
+        else
+            echo "File /sbin/${AuditTool} does not exists"
+            echo "不用新增${AuditTool}"
+        fi
+    done
+
+    echo "146 稽核日誌檔案大小上限"
+    if cat /etc/audit/auditd.conf | grep max_log_file' '=' '32 >/dev/null; then
+        echo "檢查OK"
+    else
+        sed -i 's/max_log_file =.*/max_log_file = 32/g' /etc/audit/auditd.conf
+        echo "/etc/audit/auditd.conf, 已修改max_log_file = 32"
+    fi
+
+    echo "147 稽核日誌達到其檔案大小上限之行為"
+    if cat /etc/audit/auditd.conf | grep max_log_file_action' '=' 'keep_logs >/dev/null; then
+        echo "檢查OK"
+    else
+        sed -i 's/max_log_file_action =.*/max_log_file_action = keep_logs/g' /etc/audit/auditd.conf
+        echo "/etc/audit/auditd.conf, 已修改max_log_file_action = keep_logs"
+    fi
+    
+    echo "148 啟用紀錄系統管理者活動"
+    if grep '\-w /etc/sudoers \-p wa \-k scope\|\-w /etc/sudoers.d/ \-p wa \-k scope' /etc/audit/rules.d/audit.rules >/dev/null; then
+        echo "檢查OK"
+    else
+        sed -i '$a -w /etc/sudoers -p wa -k scope' ${auditrules}
+        sed -i '$a -w /etc/sudoers.d/ -p wa -k scope' ${auditrules}
+        echo "已新增設定"
+    fi
 }
 
 # 143 稽核工具權限
