@@ -578,35 +578,32 @@ function AuditLogConfig () {
         echo "/etc/audit/auditd.conf 已設定640"
     fi
 
-    echo "143 稽核工具權限 讀寫執行"
-    declare -a AuditTools=("auditctl" "aureport" "ausearch" "autrace" "auditd" "audisp-remote" "audisp-syslog" "augenrules")
-    for index in ${!AuditTools[@]}; do
-        AuditTool=${AuditTools[$index]}
-        if [ -f "/sbin/${AuditTool}" ]; then
-            if stat -c "%a" /sbin/${AuditTool} | grep 750 >/dev/null; then
-                echo "/sbin/${AuditTool}  檢查OK"
-            else
-                chmod 750 /sbin/${AuditTool}
-                echo "/sbin/${AuditTool} 已設定750"
-            fi
-        else
-            echo "File /sbin/${AuditTool} does not exists"
-        fi
-    done
-
+    echo "143 稽核工具讀寫執行權限"
     echo "144 稽核工具擁有者與群組權限"
-    declare -a AuditTools=("auditctl" "aureport" "ausearch" "autrace" "auditd" "audisp-remote" "audisp-syslog" "augenrules")
-    for index in ${!AuditTools[@]}; do
-        AuditTool=${AuditTools[$index]}
-        if [ -f "/sbin/${AuditTool}" ]; then
-            if stat -c "%U %G" /sbin/${AuditTool} | grep -E root.*root >/dev/null; then
-                echo "/sbin/${AuditTool}  檢查OK"
+    AuditTools[1]='auditctl'
+    AuditTools[2]='aureport'
+    AuditTools[3]='ausearch'
+    AuditTools[4]='autrace'
+    AuditTools[5]='auditd'
+    AuditTools[6]='audisp-remote'
+    AuditTools[7]='audisp-syslog'
+    AuditTools[8]='augenrules'
+    for index in {1..8}; do
+        if [ -f "/sbin/${AuditTools[${index}]}" ]; then
+            if stat -c "%a" /sbin/${AuditTools[${index}]} | grep 750 >/dev/null; then
+                echo "/sbin/${AuditTools[${index}]}  讀寫執行權限檢查OK"
             else
-                chown root:root /sbin/${AuditTool}
-                echo "/sbin/${AuditTool} 已設定root:root"
+                chmod 750 /sbin/${AuditTools[${index}]}
+                echo "/sbin/${AuditTools[${index}]} 已設定750"
+            fi
+            if stat -c "%U %G" /sbin/${AuditTools[${index}]} | grep -E root.*root >/dev/null; then
+                echo "/sbin/${AuditTools[${index}]}  擁有者與群組權限檢查OK"
+            else
+                chown root:root /sbin/${AuditTools[${index}]}
+                echo "/sbin/${AuditTools[${index}]} 已設定root:root"
             fi
         else
-            echo "File /sbin/${AuditTool} does not exists"
+            echo "File /sbin/${AuditTools[${index}]} does not exists"
         fi
     done
 
@@ -615,23 +612,21 @@ function AuditLogConfig () {
         echo "/etc/aide.conf 檢查OK"
     else
         sed -i '$a AuditConfig = p+i+n+u+g+s+b+acl+xattrs+sha512' /etc/aide.conf
-        echo "/usr/sbin/${AuditTool} 已新增規則"
+        echo "已新增AuditConfig = p+i+n+u+g+s+b+acl+xattrs+sha512"
     fi
-
-    for index in ${!AuditTools[@]}; do
-        AuditTool=${AuditTools[$index]}
-        if [ -f "/sbin/${AuditTool}" ]; then
-            if cat /etc/aide.conf | grep /usr/sbin/${AuditTool}.*AuditConfig >/dev/null; then
-                echo "/usr/sbin/${AuditTool}  檢查OK"
+    for index in {1..8}; do
+        if [ -f "/sbin/${AuditTools[${index}]}" ]; then
+            if cat /etc/aide.conf | grep /usr/sbin/${AuditTools[${index}]}.*AuditConfig >/dev/null; then
+                echo "/usr/sbin/${AuditTools[${index}]}  保護稽核工具檢查OK"
             else
-                sed -i '$a /usr/sbin/'${AuditTool}' AuditConfig' /etc/aide.conf
-                echo "/usr/sbin/${AuditTool} 已新增規則"
+                sed -i '$a /usr/sbin/'${AuditTools[${index}]}' AuditConfig' /etc/aide.conf
+                echo "/usr/sbin/${AuditTools[${index}]} 已新增規則"
             fi
         else
-            echo "File /sbin/${AuditTool} does not exists"
-            echo "不用新增${AuditTool}"
-        fi
+            echo "File /sbin/${AuditTools[${index}]} does not exists"
+            echo "不用新增${AuditTools[${index}]}"
     done
+
 
     echo "146 稽核日誌檔案大小上限"
     if cat /etc/audit/auditd.conf | grep max_log_file' '=' '32 >/dev/null; then
@@ -649,131 +644,156 @@ function AuditLogConfig () {
         echo "/etc/audit/auditd.conf, 已修改max_log_file_action = keep_logs"
     fi
     
+    # 稽核日誌規則檔案
+    auditrulespath='/etc/audit/rules.d/audit.rules'
+    # auditlogcheck(numID)([Array]) 檢查audit.rules檔案規則是否存在
+    # auditlogadd(numID)([Array]) 新增規則
+
     echo "148 啟用紀錄系統管理者活動"
-    if grep '\-w /etc/sudoers \-p wa \-k scope\|\-w /etc/sudoers.d/ \-p wa \-k scope' /etc/audit/rules.d/audit.rules >/dev/null; then
-        echo "檢查OK"
-    else
-        sed -i '$a -w /etc/sudoers -p wa -k scope' ${auditrules}
-        sed -i '$a -w /etc/sudoers.d/ -p wa -k scope' ${auditrules}
-        echo "已新增設定"
-    fi
+    auditlogcheck148[1]='\-w /etc/sudoers \-p wa \-k scope'
+    auditlogcheck148[2]='\-w /etc/sudoers.d/ \-p wa \-k scope'
+    auditlogadd148[1]='-w /etc/sudoers -p wa -k scope'
+    auditlogadd148[1]='-w /etc/sudoers.d/ -p wa -k scope'
+    for index in {1..2}; do
+        if grep "${auditlogcheck148[${index}]}" ${auditrulespath} >/dev/null; then
+            echo "檢查OK"
+        else
+            sed -i '$a # 148 啟用紀錄系統管理者活動' ${auditrulespath}
+            sed -i '$a '"${auditlogadd148[${index}]}" ${auditrulespath}
+            echo "已新增"${auditlogadd148[${index}]}
+        fi
+    done
+
+    echo "151 啟用紀錄變更日期與時間事件"
+    auditlogcheck151[1]='\-a always,exit \-F arch=b64 \-S adjtimex \-S settimeofday \-k time-change'
+    auditlogcheck151[2]='\-a always,exit \-F arch=b32 \-S adjtimex \-S settimeofday \-k time-change'
+    auditlogcheck151[3]='\-a always,exit \-F arch=b64 \-S clock_settime \-k time-change'
+    auditlogcheck151[4]='\-a always,exit \-F arch=b32 \-S clock_settime \-k time-change'
+    auditlogcheck151[5]='\-w /etc/localtime \-p wa \-k time-change'
+    auditlogadd151[1]='-a always,exit -F arch=b64 -S adjtimex -S settimeofday -k time-change'
+    auditlogadd151[2]='-a always,exit -F arch=b32 -S adjtimex -S settimeofday -k time-change'
+    auditlogadd151[3]='-a always,exit -F arch=b64 -S clock_settime -k time-change'
+    auditlogadd151[4]='-a always,exit -F arch=b32 -S clock_settime -k time-change'
+    auditlogadd151[5]='-w /etc/localtime -p wa -k time-change'
+    for index in {1..5}; do
+        if grep "${auditlogcheck151[${index}]}" ${auditrulespath} >/dev/null; then
+            echo "檢查OK"
+        else
+            sed -i '$a # 151 啟用紀錄變更日期與時間事件' ${auditrulespath}
+            sed -i '$a '"${auditlogadd151[${index}]}" ${auditrulespath}
+            echo "已新增"${auditlogadd151[${index}]}
+        fi
+    done
 }
 
 # 149 紀錄變更登入與登出資訊事件 啟用
-sed -i '$a -w /var/run/faillock/ -p wa -k logins' ${auditrules}
-sed -i '$a -w /var/log/lastlog -p wa -k logins' ${auditrules}
+sed -i '$a -w /var/run/faillock/ -p wa -k logins' ${auditrulespath}
+sed -i '$a -w /var/log/lastlog -p wa -k logins' ${auditrulespath}
 
 # 150 紀錄會談啟始資訊 啟用
-sed -i '$a -w /var/run/utmp -p wa -k session' ${auditrules}
-sed -i '$a -w /var/log/wtmp -p wa -k logins' ${auditrules}
-sed -i '$a -w /var/log/btmp -p wa -k logins' ${auditrules}
-
-# 151 紀錄變更日期與時間事件 啟用
-sed -i '$a -a always,exit -F arch=b64 -S adjtimex -S settimeofday -k time-change' ${auditrules}
-sed -i '$a -a always,exit -F arch=b32 -S adjtimex -S settimeofday -S stime -k time-change' ${auditrules}
-sed -i '$a -a always,exit -F arch=b64 -S clock_settime -k time-change' ${auditrules}
-sed -i '$a -a always,exit -F arch=b32 -S clock_settime -k time-change' ${auditrules}
-sed -i '$a -w /etc/localtime -p wa -k time-change' ${auditrules}
+sed -i '$a -w /var/run/utmp -p wa -k session' ${auditrulespath}
+sed -i '$a -w /var/log/wtmp -p wa -k logins' ${auditrulespath}
+sed -i '$a -w /var/log/btmp -p wa -k logins' ${auditrulespath}
 
 # 152 紀錄變更系統強制存取控制事件 啟用
-sed -i '$a -w /etc/selinux/ -p wa -k MAC-policy' ${auditrules}
-sed -i '$a -w /usr/share/selinux/ -p wa -k MAC-policy' ${auditrules}
+sed -i '$a -w /etc/selinux/ -p wa -k MAC-policy' ${auditrulespath}
+sed -i '$a -w /usr/share/selinux/ -p wa -k MAC-policy' ${auditrulespath}
 
 # 153 紀錄變更系統網路環境事件 啟用
-sed -i '$a -a always,exit -F arch=b64 -S sethostname -S setdomainname -k system-locale' ${auditrules}
-sed -i '$a -a always,exit -F arch=b32 -S sethostname -S setdomainname -k system-locale' ${auditrules}
-sed -i '$a -w /etc/issue -p wa -k system-locale' ${auditrules}
-sed -i '$a -w /etc/issue.net -p wa -k system-locale' ${auditrules}
-sed -i '$a -w /etc/hosts -p wa -k system-locale' ${auditrules}
-sed -i '$a -w /etc/sysconfig/network-scripts/ -p wa -k system-locale' ${auditrules}
+sed -i '$a -a always,exit -F arch=b64 -S sethostname -S setdomainname -k system-locale' ${auditrulespath}
+sed -i '$a -a always,exit -F arch=b32 -S sethostname -S setdomainname -k system-locale' ${auditrulespath}
+sed -i '$a -w /etc/issue -p wa -k system-locale' ${auditrulespath}
+sed -i '$a -w /etc/issue.net -p wa -k system-locale' ${auditrulespath}
+sed -i '$a -w /etc/hosts -p wa -k system-locale' ${auditrulespath}
+sed -i '$a -w /etc/sysconfig/network-scripts/ -p wa -k system-locale' ${auditrulespath}
 
 # 154 紀錄變更自主存取控制權限事件 啟用
-sed -i '$a -a always,exit -F arch=b64 -S chmod -S fchmod -S fchmodat -F auid>=1000 -F auid!=4294967295 -k perm_mod' ${auditrules}
-sed -i '$a -a always,exit -F arch=b32 -S chmod -S fchmod -S fchmodat -F auid>=1000 -F auid!=4294967295 -k perm_mod' ${auditrules}
-sed -i '$a -a always,exit -F arch=b64 -S chown -S fchown -S fchownat -S lchown -F auid>=1000 -F auid!=4294967295 -k perm_mod' ${auditrules}
-sed -i '$a -a always,exit -F arch=b32 -S chown -S fchown -S fchownat -S lchown -F auid>=1000 -F auid!=4294967295 -k perm_mod' ${auditrules}
-sed -i '$a -a always,exit -F arch=b64 -S setxattr -S lsetxattr -S fsetxattr -S removexattr -S lremovexattr -S fremovexattr -F auid>=1000 -F auid!=4294967295 -k perm_mod' ${auditrules}
-sed -i '$a -a always,exit -F arch=b32 -S setxattr -S lsetxattr -S fsetxattr -S removexattr -S lremovexattr -S fremovexattr -F auid>=1000 -F auid!=4294967295 -k perm_mod' ${auditrules}
+sed -i '$a -a always,exit -F arch=b64 -S chmod -S fchmod -S fchmodat -F auid>=1000 -F auid!=4294967295 -k perm_mod' ${auditrulespath}
+sed -i '$a -a always,exit -F arch=b32 -S chmod -S fchmod -S fchmodat -F auid>=1000 -F auid!=4294967295 -k perm_mod' ${auditrulespath}
+sed -i '$a -a always,exit -F arch=b64 -S chown -S fchown -S fchownat -S lchown -F auid>=1000 -F auid!=4294967295 -k perm_mod' ${auditrulespath}
+sed -i '$a -a always,exit -F arch=b32 -S chown -S fchown -S fchownat -S lchown -F auid>=1000 -F auid!=4294967295 -k perm_mod' ${auditrulespath}
+sed -i '$a -a always,exit -F arch=b64 -S setxattr -S lsetxattr -S fsetxattr -S removexattr -S lremovexattr -S fremovexattr -F auid>=1000 -F auid!=4294967295 -k perm_mod' ${auditrulespath}
+sed -i '$a -a always,exit -F arch=b32 -S setxattr -S lsetxattr -S fsetxattr -S removexattr -S lremovexattr -S fremovexattr -F auid>=1000 -F auid!=4294967295 -k perm_mod' ${auditrulespath}
 
 # =============================================
 
 # 155 紀錄不成功之未經授權檔案存取 啟用
-sed -i '$a -a always,exit -F arch=b64 -S creat -S open -S openat -S truncate -S ftruncate -F exit=-EACCES -F auid>=1000 -F auid!=4294967295 -k access' ${auditrules}
-sed -i '$a -a always,exit -F arch=b32 -S creat -S open -S openat -S truncate -S ftruncate -F exit=-EACCES -F auid>=1000 -F auid!=4294967295 -k access' ${auditrules}
-sed -i '$a -a always,exit -F arch=b64 -S creat -S open -S openat -S truncate -S ftruncate -F exit=-EPERM -F auid>=1000 -F auid!=4294967295 -k access' ${auditrules}
-sed -i '$a -a always,exit -F arch=b32 -S creat -S open -S openat -S truncate -S ftruncate -F exit=-EPERM -F auid>=1000 -F auid!=4294967295 -k access' ${auditrules}
-sed -i '$a ' ${auditrules}
+sed -i '$a -a always,exit -F arch=b64 -S creat -S open -S openat -S truncate -S ftruncate -F exit=-EACCES -F auid>=1000 -F auid!=4294967295 -k access' ${auditrulespath}
+sed -i '$a -a always,exit -F arch=b32 -S creat -S open -S openat -S truncate -S ftruncate -F exit=-EACCES -F auid>=1000 -F auid!=4294967295 -k access' ${auditrulespath}
+sed -i '$a -a always,exit -F arch=b64 -S creat -S open -S openat -S truncate -S ftruncate -F exit=-EPERM -F auid>=1000 -F auid!=4294967295 -k access' ${auditrulespath}
+sed -i '$a -a always,exit -F arch=b32 -S creat -S open -S openat -S truncate -S ftruncate -F exit=-EPERM -F auid>=1000 -F auid!=4294967295 -k access' ${auditrulespath}
+sed -i '$a ' ${auditrulespath}
 
 # 156 紀錄變更使用者或群組資訊事件 啟用
-sed -i '$a -w /etc/group -p wa -k identity' ${auditrules}
-sed -i '$a -w /etc/passwd -p wa -k identity' ${auditrules}
-sed -i '$a -w /etc/gshadow -p wa -k identity' ${auditrules}
-sed -i '$a -w /etc/shadow -p wa -k identity' ${auditrules}
-sed -i '$a -w /etc/security/opasswd -p wa -k identity' ${auditrules}
+sed -i '$a -w /etc/group -p wa -k identity' ${auditrulespath}
+sed -i '$a -w /etc/passwd -p wa -k identity' ${auditrulespath}
+sed -i '$a -w /etc/gshadow -p wa -k identity' ${auditrulespath}
+sed -i '$a -w /etc/shadow -p wa -k identity' ${auditrulespath}
+sed -i '$a -w /etc/security/opasswd -p wa -k identity' ${auditrulespath}
 
 # 157 紀錄變更檔案系統掛載事件
-sed -i '$a -a always,exit -F arch=b64 -S mount -F auid>=1000 -F auid!=4294967295 -k mounts' ${auditrules}
-sed -i '$a -a always,exit -F arch=b32 -S mount -F auid>=1000 -F auid!=4294967295 -k mounts' ${auditrules}
+sed -i '$a -a always,exit -F arch=b64 -S mount -F auid>=1000 -F auid!=4294967295 -k mounts' ${auditrulespath}
+sed -i '$a -a always,exit -F arch=b32 -S mount -F auid>=1000 -F auid!=4294967295 -k mounts' ${auditrulespath}
 
 # 158 紀錄特權指令使用情形 啟用
 
 # 159 紀錄檔案刪除事件 啟用
-sed -i '$a -a always,exit -F arch=b64 -S unlink -S unlinkat -S rename -S renameat -F auid>=1000 -F auid!=4294967295 -k delete' ${auditrules}
-sed -i '$a -a always,exit -F arch=b32 -S unlink -S unlinkat -S rename -S renameat -F auid>=1000 -F auid!=4294967295 -k delete' ${auditrules}
+sed -i '$a -a always,exit -F arch=b64 -S unlink -S unlinkat -S rename -S renameat -F auid>=1000 -F auid!=4294967295 -k delete' ${auditrulespath}
+sed -i '$a -a always,exit -F arch=b32 -S unlink -S unlinkat -S rename -S renameat -F auid>=1000 -F auid!=4294967295 -k delete' ${auditrulespath}
 
 # 160 紀錄核心模組掛載與卸載事件 啟用
-sed -i '$a -w /sbin/insmod -p x -k modules' ${auditrules}
-sed -i '$a -w /sbin/rmmod -p x -k modules' ${auditrules}
-sed -i '$a -w /sbin/modprobe -p x -k modules' ${auditrules}
-sed -i '$a -a always,exit -F arch=b64 -S init_module -S delete_module -k modules' ${auditrules}
+sed -i '$a -w /sbin/insmod -p x -k modules' ${auditrulespath}
+sed -i '$a -w /sbin/rmmod -p x -k modules' ${auditrulespath}
+sed -i '$a -w /sbin/modprobe -p x -k modules' ${auditrulespath}
+sed -i '$a -a always,exit -F arch=b64 -S init_module -S delete_module -k modules' ${auditrulespath}
 
 # 161 紀錄系統管理者活動日誌變更 啟用
 
 # 162 紀錄chcon指令使用情形 啟用
-sed -i '$a -a always,exit -F path=/usr/bin/chcon -F perm=x -F auid>=1000 -F auid!=4294967295 -k perm_chng' ${auditrules}
+sed -i '$a -a always,exit -F path=/usr/bin/chcon -F perm=x -F auid>=1000 -F auid!=4294967295 -k perm_chng' ${auditrulespath}
 
 # 163 紀錄ssh-agent 程序使用情形 啟用
-sed -i '$a -a always,exit -F path=/usr/bin/sshagent -F perm=x -F auid>=1000 -F auid!=4294967295 -k privilegedssh' ${auditrules}
+sed -i '$a -a always,exit -F path=/usr/bin/sshagent -F perm=x -F auid>=1000 -F auid!=4294967295 -k privilegedssh' ${auditrulespath}
 
 # 164 紀錄unix_updat 啟用
-sed -i '$a -a always,exit -F  path=/sbin/unix_update -F perm=x -F auid>=1000 -F auid!=4294967295 -k privileged-unix-updat' ${auditrules}
+sed -i '$a -a always,exit -F  path=/sbin/unix_update -F perm=x -F auid>=1000 -F auid!=4294967295 -k privileged-unix-updat' ${auditrulespath}
 
 # 165 紀錄setfacl指令使用情形 啟用
-sed -i '$a -a always,exit -F path=/usr/bin/setfacl -F perm=x -F auid>=1000 -F auid!=4294967295 -k perm_chng' ${auditrules}
+sed -i '$a -a always,exit -F path=/usr/bin/setfacl -F perm=x -F auid>=1000 -F auid!=4294967295 -k perm_chng' ${auditrulespath}
 
 # 166 紀錄finit_module指令使用情形 啟用
-sed -i '$a -a always,exit -F arch=b32 -S finit_module -F auid>=1000 -F auid!=4294967295 -k module_chng' ${auditrules}
-sed -i '$a -a always,exit -F arch=b64 -S finit_module -F auid>=1000 -F auid!=4294967295 -k module_chng' ${auditrules}
+sed -i '$a -a always,exit -F arch=b32 -S finit_module -F auid>=1000 -F auid!=4294967295 -k module_chng' ${auditrulespath}
+sed -i '$a -a always,exit -F arch=b64 -S finit_module -F auid>=1000 -F auid!=4294967295 -k module_chng' ${auditrulespath}
 
 # 167 紀錄open_by_handle_at系統呼叫使用情形 啟用
-sed -i '$a -a always,exit -F arch=b32 -S open_by_handle_at -F exit=-EPERM -F auid>=1000 -F auid!=4294967295 -k perm_access' ${auditrules}
-sed -i '$a -a always,exit -F arch=b64 -S open_by_handle_at -F exit=-EPERM -F auid>=1000 -F auid!=4294967295 -k perm_access' ${auditrules}
-sed -i '$a -a always,exit -F arch=b32 -S open_by_handle_at -F exit=-EACCES -F auid>=1000 -F auid!=4294967295 -k perm_access' ${auditrules}
-sed -i '$a -a always,exit -F arch=b64 -S open_by_handle_at -F exit=-EACCES -F auid>=1000 -F auid!=4294967295 -k perm_access' ${auditrules}
+sed -i '$a -a always,exit -F arch=b32 -S open_by_handle_at -F exit=-EPERM -F auid>=1000 -F auid!=4294967295 -k perm_access' ${auditrulespath}
+sed -i '$a -a always,exit -F arch=b64 -S open_by_handle_at -F exit=-EPERM -F auid>=1000 -F auid!=4294967295 -k perm_access' ${auditrulespath}
+sed -i '$a -a always,exit -F arch=b32 -S open_by_handle_at -F exit=-EACCES -F auid>=1000 -F auid!=4294967295 -k perm_access' ${auditrulespath}
+sed -i '$a -a always,exit -F arch=b64 -S open_by_handle_at -F exit=-EACCES -F auid>=1000 -F auid!=4294967295 -k perm_access' ${auditrulespath}
 
 # 168 紀錄usermod指令使用情形
 # 168 紀錄usermod指令使用情形 啟用
-sed -i '$a -a always,exit -F path=/usr/sbin/usermod -F perm=x -F auid>=1000 -F auid!=4294967295 -k privileged-usermod' ${auditrules}
+sed -i '$a -a always,exit -F path=/usr/sbin/usermod -F perm=x -F auid>=1000 -F auid!=4294967295 -k privileged-usermod' ${auditrulespath}
 
 # 169 紀錄chaacl指令使用情形 啟用
-sed -i '$a -a always,exit -F path=/usr/bin/chacl -F perm=x -F auid>=1000 -F auid!=4294967295 -k perm_chng' ${auditrules}
+sed -i '$a -a always,exit -F path=/usr/bin/chacl -F perm=x -F auid>=1000 -F auid!=4294967295 -k perm_chng' ${auditrulespath}
 
 # 170 紀錄kmod指令使用情形 啟用
-sed -i '$a -w /bin/kmod -p x -k modules' ${auditrules}
+sed -i '$a -w /bin/kmod -p x -k modules' ${auditrulespath}
 
 # 171 紀錄Pam_Faillock日誌檔案 啟用
-sed -i '$a -w /var/log/faillock -p wa -k logins' ${auditrules}
+sed -i '$a -w /var/log/faillock -p wa -k logins' ${auditrulespath}
 
 # 172 紀錄execve系統呼叫使用情形 啟用
-sed -i '$a -a always,exit -F arch=b32 -S execve -C uid!=euid -F key=execpriv' ${auditrules}
-sed -i '$a -a always,exit -F arch=b64 -S execve -C uid!=euid -F key=execpriv' ${auditrules}
-sed -i '$a -a always,exit -F arch=b32 -S execve -C gid!=egid -F key=execpriv' ${auditrules}
-sed -i '$a -a always,exit -F arch=b64 -S execve -C gid!=egid -F key=execpriv' ${auditrules}
+sed -i '$a -a always,exit -F arch=b32 -S execve -C uid!=euid -F key=execpriv' ${auditrulespath}
+sed -i '$a -a always,exit -F arch=b64 -S execve -C uid!=euid -F key=execpriv' ${auditrulespath}
+sed -i '$a -a always,exit -F arch=b32 -S execve -C gid!=egid -F key=execpriv' ${auditrulespath}
+sed -i '$a -a always,exit -F arch=b64 -S execve -C gid!=egid -F key=execpriv' ${auditrulespath}
 
 # 173 auditd設定不變模式
-sed -i '12a # Set enabled flag.' ${auditrules}
-sed -i '13a # To lock the audit configuration so that it can’t be changed, pass a 2 as the argument.' ${auditrules}
-sed -i '14a -e 2' ${auditrules}
+sed -i '12a # Set enabled flag.' ${auditrulespath}
+sed -i '13a # To lock the audit configuration so that it can’t be changed, pass a 2 as the argument.' ${auditrulespath}
+sed -i '14a -e 2' ${auditrulespath}
 
 # 174 rsyslog套件 安裝
 dnf install -y rsyslog
