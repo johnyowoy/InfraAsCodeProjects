@@ -649,105 +649,160 @@ function AuditLogConfig () {
     # auditlogcheck(numID)([Array]) 檢查audit.rules檔案規則是否存在
     # auditlogadd(numID)([Array]) 新增規則
 
-    echo "148 啟用紀錄系統管理者活動"
-    auditlogcheck148[1]='\-w /etc/sudoers \-p wa \-k scope'
-    auditlogcheck148[2]='\-w /etc/sudoers.d/ \-p wa \-k scope'
-    auditlogadd148[1]='-w /etc/sudoers -p wa -k scope'
-    auditlogadd148[1]='-w /etc/sudoers.d/ -p wa -k scope'
-    for index in {1..2}; do
-        if grep "${auditlogcheck148[${index}]}" ${auditrulespath} >/dev/null; then
-            echo "檢查OK"
+    # Audit Log Check
+    auditlogcheck[1]='# 148 紀錄系統管理者活動'
+    auditlogcheck[2]='\-w /etc/sudoers \-p wa \-k scope'
+    auditlogcheck[3]='\-w /etc/sudoers.d/ \-p wa \-k scope'
+    auditlogcheck[4]='# 149 紀錄變更登入與登出資訊事件'
+    auditlogcheck[5]='\-w /var/run/faillock/ \-p wa \-k logins'
+    auditlogcheck[6]='\-w /var/log/lastlog \-p wa \-k logins'
+    auditlogcheck[7]='# 150 紀錄會談啟始資訊'
+    auditlogcheck[8]='\-w /var/run/utmp \-p wa \-k session'
+    auditlogcheck[9]='\-w /var/log/wtmp \-p wa \-k logins'
+    auditlogcheck[10]='\-w /var/log/btmp \-p wa \-k logins'
+    auditlogcheck[11]='# 152 紀錄變更系統強制存取控制事件'
+    auditlogcheck[12]='\-w /etc/selinux/ \-p wa \-k MAC-policy'
+    auditlogcheck[13]='\-w /usr/share/selinux/ \-p wa \-k MAC-policy'
+    auditlogcheck[14]='# 153 紀錄變更系統網路環境事件'
+    auditlogcheck[15]='\-a always,exit \-F arch=b64 \-S sethostname \-S setdomainname \-k system-locale'
+    auditlogcheck[16]='\-a always,exit \-F arch=b32 \-S sethostname \-S setdomainname \-k system-locale'
+    auditlogcheck[17]='\-w /etc/issue \-p wa \-k system-locale'
+    auditlogcheck[18]='\-w /etc/issue.net \-p wa \-k system-locale'
+    auditlogcheck[19]='\-w /etc/hosts \-p wa \-k system-locale'
+    auditlogcheck[20]='\-w /etc/sysconfig/network-scripts/ \-p wa \-k system-locale'
+    auditlogcheck[21]='# 154 紀錄變更自主存取控制權限事件'
+    auditlogcheck[22]='\-a always,exit \-F arch=b64 \-S chmod \-S fchmod \-S fchmodat \-F auid>=1000 \-F auid!=4294967295 \-k perm_mod'
+    auditlogcheck[23]='\-a always,exit \-F arch=b32 \-S chmod \-S fchmod \-S fchmodat \-F auid>=1000 \-F auid!=4294967295 \-k perm_mod'
+    auditlogcheck[24]='\-a always,exit \-F arch=b64 \-S chown \-S fchown \-S fchownat \-S lchown \-F auid>=1000 \-F auid!=4294967295 \-k perm_mod'
+    auditlogcheck[25]='\-a always,exit \-F arch=b32 \-S chown \-S fchown \-S fchownat \-S lchown \-F auid>=1000 \-F auid!=4294967295 \-k perm_mod'
+    auditlogcheck[26]='\-a always,exit \-F arch=b64 \-S setxattr \-S lsetxattr \-S fsetxattr \-S removexattr \-S lremovexattr \-S fremovexattr \-F auid>=1000 \-F auid!=4294967295 \-k perm_mod'
+    auditlogcheck[27]='\-a always,exit \-F arch=b32 \-S setxattr \-S lsetxattr \-S fsetxattr \-S removexattr \-S lremovexattr \-S fremovexattr \-F auid>=1000 \-F auid!=4294967295 \-k perm_mod'
+    auditlogcheck[28]='# 155 紀錄不成功之未經授權檔案存取'
+    auditlogcheck[29]='\-a always,exit \-F arch=b64 \-S creat \-S open \-S openat \-S truncate \-S ftruncate \-F exit=-EACCES \-F auid>=1000 \-F auid!=4294967295 \-k access'
+    auditlogcheck[30]='\-a always,exit \-F arch=b32 \-S creat \-S open \-S openat \-S truncate \-S ftruncate \-F exit=-EACCES \-F auid>=1000 \-F auid!=4294967295 \-k access'
+    auditlogcheck[31]='\-a always,exit \-F arch=b64 \-S creat \-S open \-S openat \-S truncate \-S ftruncate \-F exit=-EPERM \-F auid>=1000 \-F auid!=4294967295 \-k access'
+    auditlogcheck[32]='\-a always,exit \-F arch=b32 \-S creat \-S open \-S openat \-S truncate \-S ftruncate \-F exit=-EPERM \-F auid>=1000 \-F auid!=4294967295 \-k access'
+    auditlogcheck[33]='# 156 紀錄變更使用者或群組資訊事件'
+    auditlogcheck[34]='\-w /etc/group \-p wa \-k identity'
+    auditlogcheck[35]='\-w /etc/passwd \-p wa \-k identity'
+    auditlogcheck[36]='\-w /etc/gshadow \-p wa \-k identity'
+    auditlogcheck[37]='\-w /etc/shadow \-p wa \-k identity'
+    auditlogcheck[38]='\-w /etc/security/opasswd \-p wa \-k identity'
+    auditlogcheck[39]='# 157 紀錄變更檔案系統掛載事件'
+    auditlogcheck[40]='\-a always,exit \-F arch=b64 \-S mount \-F auid>=1000 \-F auid!=4294967295 \-k mounts'
+    auditlogcheck[41]='\-a always,exit \-F arch=b32 \-S mount \-F auid>=1000 \-F auid!=4294967295 \-k mounts'
+    auditlogcheck[42]='# 159 紀錄檔案刪除事件'
+    auditlogcheck[43]='\-a always,exit \-F arch=b64 \-S unlink \-S unlinkat \-S rename \-S renameat \-F auid>=1000 \-F auid!=4294967295 \-k delete'
+    auditlogcheck[44]='\-a always,exit \-F arch=b32 \-S unlink \-S unlinkat \-S rename \-S renameat \-F auid>=1000 \-F auid!=4294967295 \-k delete'
+    auditlogcheck[45]='# 160 紀錄核心模組掛載與卸載事件'
+    auditlogcheck[46]='\-w /sbin/insmod \-p x \-k modules'
+    auditlogcheck[47]='\-w /sbin/rmmod \-p x \-k modules'
+    auditlogcheck[48]='\-w /sbin/modprobe \-p x \-k modules'
+    auditlogcheck[49]='\-a always,exit \-F arch=b64 \-S init_module \-S delete_module \-k modules'
+    auditlogcheck[50]='# 161 紀錄系統管理者活動日誌變更'
+    auditlogcheck[51]='\-w /var/log/sudo.log \-p wa \-k actions'
+    auditlogcheck[52]='# 162 紀錄chcon指令使用情形'
+    auditlogcheck[53]='\-a always,exit \-F path=/usr/bin/chcon \-F perm=x \-F auid>=1000 \-F auid!=4294967295 \-k perm_chng'
+    auditlogcheck[54]='# 163 紀錄ssh-agent程序使用情形'
+    auditlogcheck[55]='\-a always,exit \-F path=/usr/bin/ssh-agent \-F perm=x \-F auid>=1000 \-F auid!=4294967295 \-k privileged-ssh'
+    auditlogcheck[56]='# 164 紀錄unix_update程序使用情形'
+    auditlogcheck[57]='\-a always,exit \-F path=/sbin/unix_update \-F perm=x \-F auid>=1000 \-F auid!=4294967295 \-k privilegedunix-update'
+    auditlogcheck[58]='# 165 紀錄setfacl指令使用情形'
+    auditlogcheck[59]='\-a always,exit \-F path=/usr/bin/setfacl \-F perm=x \-F auid>=1000 \-F auid!=4294967295 \-k perm_chng'
+    auditlogcheck[60]='# 166 紀錄finit_module指令使用情形'
+    auditlogcheck[61]='\-a always,exit \-F arch=b32 \-S finit_module \-F auid>=1000 \-F auid!=4294967295 \-k module_chng'
+    auditlogcheck[62]='\-a always,exit \-F arch=b64 \-S finit_module \-F auid>=1000 \-F auid!=4294967295 \-k module_chng'
+    auditlogcheck[63]='# 167 紀錄open_by_handle_at系統呼叫使用情形'
+    auditlogcheck[64]='\-a always,exit \-F arch=b32 \-S open_by_handle_at \-F exit=-EPERM \-F auid>=1000 \-F auid!=4294967295 \-k perm_access'
+    auditlogcheck[65]='\-a always,exit \-F arch=b64 \-S open_by_handle_at \-F exit=-EPERM \-F auid>=1000 \-F auid!=4294967295 \-k perm_access'
+    auditlogcheck[66]='\-a always,exit \-F arch=b32 \-S open_by_handle_at \-F exit=-EACCES \-F auid>=1000 \-F auid!=4294967295 \-k perm_access'
+    auditlogcheck[67]='\-a always,exit \-F arch=b64 \-S open_by_handle_at \-F exit=-EACCES \-F auid>=1000 \-F auid!=4294967295 \-k perm_access'
+    auditlogcheck[68]='# 168 紀錄usermod指令使用情形'
+    auditlogcheck[69]='\-a always,exit \-F path=/usr/sbin/usermod \-F perm=x \-F auid>=1000 \-F auid!=4294967295 \-k privilegedusermod'
+
+
+    # Audit Logg Add
+    auditlogadd[1]='# 148 紀錄系統管理者活動'
+    auditlogadd[2]='-w /etc/sudoers -p wa -k scope'
+    auditlogadd[3]='-w /etc/sudoers.d/ -p wa -k scope'
+    auditlogadd[4]='# 149 紀錄變更登入與登出資訊事件'
+    auditlogadd[5]='-w /var/run/faillock/ -p wa -k logins'
+    auditlogadd[6]='-w /var/log/lastlog -p wa -k logins'
+    auditlogadd[7]='# 150 紀錄會談啟始資訊'
+    auditlogadd[8]='-w /var/run/utmp -p wa -k session'
+    auditlogadd[9]='-w /var/log/wtmp -p wa -k logins'
+    auditlogadd[10]='-w /var/log/btmp -p wa -k logins'
+    auditlogadd[11]='# 152 紀錄變更系統強制存取控制事件'
+    auditlogadd[12]='-w /etc/selinux/ -p wa -k MAC-policy'
+    auditlogadd[13]='-w /usr/share/selinux/ -p wa -k MAC-policy'
+    auditlogadd[14]='# 153 紀錄變更系統網路環境事件'
+    auditlogadd[15]='-a always,exit -F arch=b64 -S sethostname -S setdomainname -k system-locale'
+    auditlogadd[16]='-a always,exit -F arch=b32 -S sethostname -S setdomainname -k system-locale'
+    auditlogadd[17]='-w /etc/issue -p wa -k system-locale'
+    auditlogadd[18]='-w /etc/issue.net -p wa -k system-locale'
+    auditlogadd[19]='-w /etc/hosts -p wa -k system-locale'
+    auditlogadd[20]='-w /etc/sysconfig/network-scripts/ -p wa -k system-locale'
+    auditlogadd[21]='# 154 紀錄變更自主存取控制權限事件'
+    auditlogadd[22]='-a always,exit -F arch=b64 -S chmod -S fchmod -S fchmodat -F auid>=1000 -F auid!=4294967295 -k perm_mod'
+    auditlogadd[23]='-a always,exit -F arch=b32 -S chmod -S fchmod -S fchmodat -F auid>=1000 -F auid!=4294967295 -k perm_mod'
+    auditlogadd[24]='-a always,exit -F arch=b64 -S chown -S fchown -S fchownat -S lchown -F auid>=1000 -F auid!=4294967295 -k perm_mod'
+    auditlogadd[25]='-a always,exit -F arch=b32 -S chown -S fchown -S fchownat -S lchown -F auid>=1000 -F auid!=4294967295 -k perm_mod'
+    auditlogadd[26]='-a always,exit -F arch=b64 -S setxattr -S lsetxattr -S fsetxattr -S removexattr -S lremovexattr -S fremovexattr -F auid>=1000 -F auid!=4294967295 -k perm_mod'
+    auditlogadd[27]='-a always,exit -F arch=b32 -S setxattr -S lsetxattr -S fsetxattr -S removexattr -S lremovexattr -S fremovexattr -F auid>=1000 -F auid!=4294967295 -k perm_mod'
+    auditlogadd[28]='# 155 紀錄不成功之未經授權檔案存取'
+    auditlogadd[29]='-a always,exit -F arch=b64 -S creat -S open -S openat -S truncate -S ftruncate -F exit=-EACCES -F auid>=1000 -F auid!=4294967295 -k access'
+    auditlogadd[30]='-a always,exit -F arch=b32 -S creat -S open -S openat -S truncate -S ftruncate -F exit=-EACCES -F auid>=1000 -F auid!=4294967295 -k access'
+    auditlogadd[31]='-a always,exit -F arch=b64 -S creat -S open -S openat -S truncate -S ftruncate -F exit=-EPERM -F auid>=1000 -F auid!=4294967295 -k access'
+    auditlogadd[32]='-a always,exit -F arch=b32 -S creat -S open -S openat -S truncate -S ftruncate -F exit=-EPERM -F auid>=1000 -F auid!=4294967295 -k access'
+    auditlogadd[33]='# 156 紀錄變更使用者或群組資訊事件'
+    auditlogadd[34]='-w /etc/group -p wa -k identity'
+    auditlogadd[35]='-w /etc/passwd -p wa -k identity'
+    auditlogadd[36]='-w /etc/gshadow -p wa -k identity'
+    auditlogadd[37]='-w /etc/shadow -p wa -k identity'
+    auditlogadd[38]='-w /etc/security/opasswd -p wa -k identity'
+    auditlogadd[39]='# 157 紀錄變更檔案系統掛載事件'
+    auditlogadd[40]='-a always,exit -F arch=b64 -S mount -F auid>=1000 -F auid!=4294967295 -k mounts'
+    auditlogadd[41]='-a always,exit -F arch=b32 -S mount -F auid>=1000 -F auid!=4294967295 -k mounts'
+    auditlogadd[42]='# 159 紀錄檔案刪除事件'
+    auditlogadd[43]='-a always,exit -F arch=b64 -S unlink -S unlinkat -S rename -S renameat -F auid>=1000 -F auid!=4294967295 -k delete'
+    auditlogadd[44]='-a always,exit -F arch=b32 -S unlink -S unlinkat -S rename -S renameat -F auid>=1000 -F auid!=4294967295 -k delete'
+    auditlogadd[45]='# 160 紀錄核心模組掛載與卸載事件'
+    auditlogadd[46]='-w /sbin/insmod -p x -k modules'
+    auditlogadd[47]='-w /sbin/rmmod -p x -k modules'
+    auditlogadd[48]='-w /sbin/modprobe -p x -k modules'
+    auditlogadd[49]='-a always,exit -F arch=b64 -S init_module -S delete_module -k modules'
+    auditlogadd[50]='# 161 紀錄系統管理者活動日誌變更'
+    auditlogadd[51]='-w /var/log/sudo.log -p wa -k actions'
+    auditlogadd[52]='# 162 紀錄chcon指令使用情形'
+    auditlogadd[53]='-a always,exit -F path=/usr/bin/chcon -F perm=x -F auid>=1000 -F auid!=4294967295 -k perm_chng'
+    auditlogadd[54]='# 163 紀錄ssh-agent程序使用情形'
+    auditlogadd[55]='-a always,exit -F path=/usr/bin/ssh-agent -F perm=x -F auid>=1000 -F auid!=4294967295 -k privileged-ssh'
+    auditlogadd[56]='# 164 紀錄unix_update程序使用情形'
+    auditlogadd[57]='-a always,exit -F path=/sbin/unix_update -F perm=x -F auid>=1000 -F auid!=4294967295 -k privilegedunix-update'
+    auditlogadd[58]='# 165 紀錄setfacl指令使用情形'
+    auditlogadd[59]='-a always,exit -F path=/usr/bin/setfacl -F perm=x -F auid>=1000 -F auid!=4294967295 -k perm_chng'
+    auditlogadd[60]='# 166 紀錄finit_module指令使用情形'
+    auditlogadd[61]='-a always,exit -F arch=b32 -S finit_module -F auid>=1000 -F auid!=4294967295 -k module_chng'
+    auditlogadd[62]='-a always,exit -F arch=b64 -S finit_module -F auid>=1000 -F auid!=4294967295 -k module_chng'
+    auditlogadd[63]='# 167 紀錄open_by_handle_at系統呼叫使用情形'
+    auditlogadd[64]='-a always,exit -F arch=b32 -S open_by_handle_at -F exit=-EPERM -F auid>=1000 -F auid!=4294967295 -k perm_access'
+    auditlogadd[65]='-a always,exit -F arch=b64 -S open_by_handle_at -F exit=-EPERM -F auid>=1000 -F auid!=4294967295 -k perm_access'
+    auditlogadd[66]='-a always,exit -F arch=b32 -S open_by_handle_at -F exit=-EACCES -F auid>=1000 -F auid!=4294967295 -k perm_access'
+    auditlogadd[67]='-a always,exit -F arch=b64 -S open_by_handle_at -F exit=-EACCES -F auid>=1000 -F auid!=4294967295 -k perm_access'
+    auditlogadd[68]='# 168 紀錄usermod指令使用情形'
+    auditlogadd[69]='-a always,exit -F path=/usr/sbin/usermod -F perm=x -F auid>=1000 -F auid!=4294967295 -k privilegedusermod'
+    for index in {1..69}; do
+        if grep "${auditlogcheck[${index}]}" ${auditrulespath} >/dev/null; then
+            echo "檢查OK "${index}
         else
-            sed -i '$a # 148 啟用紀錄系統管理者活動' ${auditrulespath}
-            sed -i '$a '"${auditlogadd148[${index}]}" ${auditrulespath}
-            echo "已新增"${auditlogadd148[${index}]}
+            sed -i '$a '"${auditlogadd[${index}]}" ${auditrulespath}
+            echo "已新增"${auditlogadd[${index}]}
         fi
     done
 
-    echo "151 啟用紀錄變更日期與時間事件"
-    auditlogcheck151[1]='\-a always,exit \-F arch=b64 \-S adjtimex \-S settimeofday \-k time-change'
-    auditlogcheck151[2]='\-a always,exit \-F arch=b32 \-S adjtimex \-S settimeofday \-k time-change'
-    auditlogcheck151[3]='\-a always,exit \-F arch=b64 \-S clock_settime \-k time-change'
-    auditlogcheck151[4]='\-a always,exit \-F arch=b32 \-S clock_settime \-k time-change'
-    auditlogcheck151[5]='\-w /etc/localtime \-p wa \-k time-change'
-    auditlogadd151[1]='-a always,exit -F arch=b64 -S adjtimex -S settimeofday -k time-change'
-    auditlogadd151[2]='-a always,exit -F arch=b32 -S adjtimex -S settimeofday -k time-change'
-    auditlogadd151[3]='-a always,exit -F arch=b64 -S clock_settime -k time-change'
-    auditlogadd151[4]='-a always,exit -F arch=b32 -S clock_settime -k time-change'
-    auditlogadd151[5]='-w /etc/localtime -p wa -k time-change'
-    for index in {1..5}; do
-        if grep "${auditlogcheck151[${index}]}" ${auditrulespath} >/dev/null; then
-            echo "檢查OK"
-        else
-            sed -i '$a # 151 啟用紀錄變更日期與時間事件' ${auditrulespath}
-            sed -i '$a '"${auditlogadd151[${index}]}" ${auditrulespath}
-            echo "已新增"${auditlogadd151[${index}]}
-        fi
-    done
 }
 
-# 149 紀錄變更登入與登出資訊事件 啟用
-sed -i '$a -w /var/run/faillock/ -p wa -k logins' ${auditrulespath}
-sed -i '$a -w /var/log/lastlog -p wa -k logins' ${auditrulespath}
 
-# 150 紀錄會談啟始資訊 啟用
-sed -i '$a -w /var/run/utmp -p wa -k session' ${auditrulespath}
-sed -i '$a -w /var/log/wtmp -p wa -k logins' ${auditrulespath}
-sed -i '$a -w /var/log/btmp -p wa -k logins' ${auditrulespath}
-
-# 152 紀錄變更系統強制存取控制事件 啟用
-sed -i '$a -w /etc/selinux/ -p wa -k MAC-policy' ${auditrulespath}
-sed -i '$a -w /usr/share/selinux/ -p wa -k MAC-policy' ${auditrulespath}
-
-# 153 紀錄變更系統網路環境事件 啟用
-sed -i '$a -a always,exit -F arch=b64 -S sethostname -S setdomainname -k system-locale' ${auditrulespath}
-sed -i '$a -a always,exit -F arch=b32 -S sethostname -S setdomainname -k system-locale' ${auditrulespath}
-sed -i '$a -w /etc/issue -p wa -k system-locale' ${auditrulespath}
-sed -i '$a -w /etc/issue.net -p wa -k system-locale' ${auditrulespath}
-sed -i '$a -w /etc/hosts -p wa -k system-locale' ${auditrulespath}
-sed -i '$a -w /etc/sysconfig/network-scripts/ -p wa -k system-locale' ${auditrulespath}
-
-# 154 紀錄變更自主存取控制權限事件 啟用
-sed -i '$a -a always,exit -F arch=b64 -S chmod -S fchmod -S fchmodat -F auid>=1000 -F auid!=4294967295 -k perm_mod' ${auditrulespath}
-sed -i '$a -a always,exit -F arch=b32 -S chmod -S fchmod -S fchmodat -F auid>=1000 -F auid!=4294967295 -k perm_mod' ${auditrulespath}
-sed -i '$a -a always,exit -F arch=b64 -S chown -S fchown -S fchownat -S lchown -F auid>=1000 -F auid!=4294967295 -k perm_mod' ${auditrulespath}
-sed -i '$a -a always,exit -F arch=b32 -S chown -S fchown -S fchownat -S lchown -F auid>=1000 -F auid!=4294967295 -k perm_mod' ${auditrulespath}
-sed -i '$a -a always,exit -F arch=b64 -S setxattr -S lsetxattr -S fsetxattr -S removexattr -S lremovexattr -S fremovexattr -F auid>=1000 -F auid!=4294967295 -k perm_mod' ${auditrulespath}
-sed -i '$a -a always,exit -F arch=b32 -S setxattr -S lsetxattr -S fsetxattr -S removexattr -S lremovexattr -S fremovexattr -F auid>=1000 -F auid!=4294967295 -k perm_mod' ${auditrulespath}
-
-# =============================================
-
-# 155 紀錄不成功之未經授權檔案存取 啟用
-sed -i '$a -a always,exit -F arch=b64 -S creat -S open -S openat -S truncate -S ftruncate -F exit=-EACCES -F auid>=1000 -F auid!=4294967295 -k access' ${auditrulespath}
-sed -i '$a -a always,exit -F arch=b32 -S creat -S open -S openat -S truncate -S ftruncate -F exit=-EACCES -F auid>=1000 -F auid!=4294967295 -k access' ${auditrulespath}
-sed -i '$a -a always,exit -F arch=b64 -S creat -S open -S openat -S truncate -S ftruncate -F exit=-EPERM -F auid>=1000 -F auid!=4294967295 -k access' ${auditrulespath}
-sed -i '$a -a always,exit -F arch=b32 -S creat -S open -S openat -S truncate -S ftruncate -F exit=-EPERM -F auid>=1000 -F auid!=4294967295 -k access' ${auditrulespath}
-sed -i '$a ' ${auditrulespath}
-
-# 156 紀錄變更使用者或群組資訊事件 啟用
-sed -i '$a -w /etc/group -p wa -k identity' ${auditrulespath}
-sed -i '$a -w /etc/passwd -p wa -k identity' ${auditrulespath}
-sed -i '$a -w /etc/gshadow -p wa -k identity' ${auditrulespath}
-sed -i '$a -w /etc/shadow -p wa -k identity' ${auditrulespath}
-sed -i '$a -w /etc/security/opasswd -p wa -k identity' ${auditrulespath}
-
-# 157 紀錄變更檔案系統掛載事件
-sed -i '$a -a always,exit -F arch=b64 -S mount -F auid>=1000 -F auid!=4294967295 -k mounts' ${auditrulespath}
-sed -i '$a -a always,exit -F arch=b32 -S mount -F auid>=1000 -F auid!=4294967295 -k mounts' ${auditrulespath}
-
-# 158 紀錄特權指令使用情形 啟用
-
-# 159 紀錄檔案刪除事件 啟用
-sed -i '$a -a always,exit -F arch=b64 -S unlink -S unlinkat -S rename -S renameat -F auid>=1000 -F auid!=4294967295 -k delete' ${auditrulespath}
-sed -i '$a -a always,exit -F arch=b32 -S unlink -S unlinkat -S rename -S renameat -F auid>=1000 -F auid!=4294967295 -k delete' ${auditrulespath}
-
-# 160 紀錄核心模組掛載與卸載事件 啟用
-sed -i '$a -w /sbin/insmod -p x -k modules' ${auditrulespath}
-sed -i '$a -w /sbin/rmmod -p x -k modules' ${auditrulespath}
-sed -i '$a -w /sbin/modprobe -p x -k modules' ${auditrulespath}
-sed -i '$a -a always,exit -F arch=b64 -S init_module -S delete_module -k modules' ${auditrulespath}
-
-# 161 紀錄系統管理者活動日誌變更 啟用
 
 # 162 紀錄chcon指令使用情形 啟用
 sed -i '$a -a always,exit -F path=/usr/bin/chcon -F perm=x -F auid>=1000 -F auid!=4294967295 -k perm_chng' ${auditrulespath}
