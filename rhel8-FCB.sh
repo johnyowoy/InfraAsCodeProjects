@@ -15,6 +15,7 @@
 # 80~91
 # 96
 # 108
+# 177 grep auth.*問題
 # 185 186 187 188
 # 207 208 221
 # 223 已經預設 ENCRYPT_METHOD SHA512
@@ -580,15 +581,18 @@ function AuditLogConfig () {
 
     echo "143 稽核工具讀寫執行權限"
     echo "144 稽核工具擁有者與群組權限"
-    AuditTools[1]='auditctl'
-    AuditTools[2]='aureport'
-    AuditTools[3]='ausearch'
-    AuditTools[4]='autrace'
-    AuditTools[5]='auditd'
-    AuditTools[6]='audisp-remote'
-    AuditTools[7]='audisp-syslog'
-    AuditTools[8]='augenrules'
-    for index in {1..8}; do
+    echo "145 啟用保護稽核工具"
+    if cat /etc/aide.conf | grep AuditConfig.*=.*p+i+n+u+g+s+b+acl+xattrs+sha512 >/dev/null; then
+        echo "/etc/aide.conf 檢查OK"
+    else
+        sed -i '$a AuditConfig = p+i+n+u+g+s+b+acl+xattrs+sha512' /etc/aide.conf
+        echo "已新增AuditConfig = p+i+n+u+g+s+b+acl+xattrs+sha512"
+    fi
+    index=1
+    while IFS= read -r line; do
+        AuditTools[$index]="$line"
+        # 143 稽核工具讀寫執行權限
+        # 144 稽核工具擁有者與群組權限
         if [ -f "/sbin/${AuditTools[${index}]}" ]; then
             if stat -c "%a" /sbin/${AuditTools[${index}]} | grep 750 >/dev/null; then
                 echo "/sbin/${AuditTools[${index}]}  讀寫執行權限檢查OK"
@@ -605,16 +609,7 @@ function AuditLogConfig () {
         else
             echo "File /sbin/${AuditTools[${index}]} does not exists"
         fi
-    done
-
-    echo "145 啟用保護稽核工具"
-    if cat /etc/aide.conf | grep AuditConfig.*=.*p+i+n+u+g+s+b+acl+xattrs+sha512 >/dev/null; then
-        echo "/etc/aide.conf 檢查OK"
-    else
-        sed -i '$a AuditConfig = p+i+n+u+g+s+b+acl+xattrs+sha512' /etc/aide.conf
-        echo "已新增AuditConfig = p+i+n+u+g+s+b+acl+xattrs+sha512"
-    fi
-    for index in {1..8}; do
+        # 145 啟用保護稽核工具
         if [ -f "/sbin/${AuditTools[${index}]}" ]; then
             if cat /etc/aide.conf | grep /usr/sbin/${AuditTools[${index}]}.*AuditConfig >/dev/null; then
                 echo "/usr/sbin/${AuditTools[${index}]}  保護稽核工具檢查OK"
@@ -625,212 +620,197 @@ function AuditLogConfig () {
         else
             echo "File /sbin/${AuditTools[${index}]} does not exists"
             echo "不用新增${AuditTools[${index}]}"
-    done
-
+        fi
+        index=$((index + 1))
+# 稽核工具列表
+    done <<EOF
+auditctl
+aureport
+ausearch
+autrace
+auditd
+audisp-remote
+audisp-syslog
+augenrules
+EOF
 
     echo "146 稽核日誌檔案大小上限"
-    if cat /etc/audit/auditd.conf | grep max_log_file' '=' '32 >/dev/null; then
+    if cat /etc/audit/auditd.conf | grep ^max_log_file' '=' '32 >/dev/null; then
         echo "檢查OK"
     else
-        sed -i 's/max_log_file =.*/max_log_file = 32/g' /etc/audit/auditd.conf
+        sed -i 's/^max_log_file =.*/max_log_file = 32/g' /etc/audit/auditd.conf
         echo "/etc/audit/auditd.conf, 已修改max_log_file = 32"
     fi
 
     echo "147 稽核日誌達到其檔案大小上限之行為"
-    if cat /etc/audit/auditd.conf | grep max_log_file_action' '=' 'keep_logs >/dev/null; then
+    if cat /etc/audit/auditd.conf | grep ^max_log_file_action' '=' 'keep_logs >/dev/null; then
         echo "檢查OK"
     else
-        sed -i 's/max_log_file_action =.*/max_log_file_action = keep_logs/g' /etc/audit/auditd.conf
+        sed -i 's/^max_log_file_action =.*/max_log_file_action = keep_logs/g' /etc/audit/auditd.conf
         echo "/etc/audit/auditd.conf, 已修改max_log_file_action = keep_logs"
     fi
     
     # 稽核日誌規則檔案
     auditrulespath='/etc/audit/rules.d/audit.rules'
-    # auditlogcheck(numID)([Array]) 檢查audit.rules檔案規則是否存在
-    # auditlogadd(numID)([Array]) 新增規則
-
     # Audit Log Check
-    auditlogcheck[1]='# 148 紀錄系統管理者活動'
-    auditlogcheck[2]='\-w /etc/sudoers \-p wa \-k scope'
-    auditlogcheck[3]='\-w /etc/sudoers.d/ \-p wa \-k scope'
-    auditlogcheck[4]='# 149 紀錄變更登入與登出資訊事件'
-    auditlogcheck[5]='\-w /var/run/faillock/ \-p wa \-k logins'
-    auditlogcheck[6]='\-w /var/log/lastlog \-p wa \-k logins'
-    auditlogcheck[7]='# 150 紀錄會談啟始資訊'
-    auditlogcheck[8]='\-w /var/run/utmp \-p wa \-k session'
-    auditlogcheck[9]='\-w /var/log/wtmp \-p wa \-k logins'
-    auditlogcheck[10]='\-w /var/log/btmp \-p wa \-k logins'
-    auditlogcheck[11]='# 152 紀錄變更系統強制存取控制事件'
-    auditlogcheck[12]='\-w /etc/selinux/ \-p wa \-k MAC-policy'
-    auditlogcheck[13]='\-w /usr/share/selinux/ \-p wa \-k MAC-policy'
-    auditlogcheck[14]='# 153 紀錄變更系統網路環境事件'
-    auditlogcheck[15]='\-a always,exit \-F arch=b64 \-S sethostname \-S setdomainname \-k system-locale'
-    auditlogcheck[16]='\-a always,exit \-F arch=b32 \-S sethostname \-S setdomainname \-k system-locale'
-    auditlogcheck[17]='\-w /etc/issue \-p wa \-k system-locale'
-    auditlogcheck[18]='\-w /etc/issue.net \-p wa \-k system-locale'
-    auditlogcheck[19]='\-w /etc/hosts \-p wa \-k system-locale'
-    auditlogcheck[20]='\-w /etc/sysconfig/network-scripts/ \-p wa \-k system-locale'
-    auditlogcheck[21]='# 154 紀錄變更自主存取控制權限事件'
-    auditlogcheck[22]='\-a always,exit \-F arch=b64 \-S chmod \-S fchmod \-S fchmodat \-F auid>=1000 \-F auid!=4294967295 \-k perm_mod'
-    auditlogcheck[23]='\-a always,exit \-F arch=b32 \-S chmod \-S fchmod \-S fchmodat \-F auid>=1000 \-F auid!=4294967295 \-k perm_mod'
-    auditlogcheck[24]='\-a always,exit \-F arch=b64 \-S chown \-S fchown \-S fchownat \-S lchown \-F auid>=1000 \-F auid!=4294967295 \-k perm_mod'
-    auditlogcheck[25]='\-a always,exit \-F arch=b32 \-S chown \-S fchown \-S fchownat \-S lchown \-F auid>=1000 \-F auid!=4294967295 \-k perm_mod'
-    auditlogcheck[26]='\-a always,exit \-F arch=b64 \-S setxattr \-S lsetxattr \-S fsetxattr \-S removexattr \-S lremovexattr \-S fremovexattr \-F auid>=1000 \-F auid!=4294967295 \-k perm_mod'
-    auditlogcheck[27]='\-a always,exit \-F arch=b32 \-S setxattr \-S lsetxattr \-S fsetxattr \-S removexattr \-S lremovexattr \-S fremovexattr \-F auid>=1000 \-F auid!=4294967295 \-k perm_mod'
-    auditlogcheck[28]='# 155 紀錄不成功之未經授權檔案存取'
-    auditlogcheck[29]='\-a always,exit \-F arch=b64 \-S creat \-S open \-S openat \-S truncate \-S ftruncate \-F exit=-EACCES \-F auid>=1000 \-F auid!=4294967295 \-k access'
-    auditlogcheck[30]='\-a always,exit \-F arch=b32 \-S creat \-S open \-S openat \-S truncate \-S ftruncate \-F exit=-EACCES \-F auid>=1000 \-F auid!=4294967295 \-k access'
-    auditlogcheck[31]='\-a always,exit \-F arch=b64 \-S creat \-S open \-S openat \-S truncate \-S ftruncate \-F exit=-EPERM \-F auid>=1000 \-F auid!=4294967295 \-k access'
-    auditlogcheck[32]='\-a always,exit \-F arch=b32 \-S creat \-S open \-S openat \-S truncate \-S ftruncate \-F exit=-EPERM \-F auid>=1000 \-F auid!=4294967295 \-k access'
-    auditlogcheck[33]='# 156 紀錄變更使用者或群組資訊事件'
-    auditlogcheck[34]='\-w /etc/group \-p wa \-k identity'
-    auditlogcheck[35]='\-w /etc/passwd \-p wa \-k identity'
-    auditlogcheck[36]='\-w /etc/gshadow \-p wa \-k identity'
-    auditlogcheck[37]='\-w /etc/shadow \-p wa \-k identity'
-    auditlogcheck[38]='\-w /etc/security/opasswd \-p wa \-k identity'
-    auditlogcheck[39]='# 157 紀錄變更檔案系統掛載事件'
-    auditlogcheck[40]='\-a always,exit \-F arch=b64 \-S mount \-F auid>=1000 \-F auid!=4294967295 \-k mounts'
-    auditlogcheck[41]='\-a always,exit \-F arch=b32 \-S mount \-F auid>=1000 \-F auid!=4294967295 \-k mounts'
-    auditlogcheck[42]='# 159 紀錄檔案刪除事件'
-    auditlogcheck[43]='\-a always,exit \-F arch=b64 \-S unlink \-S unlinkat \-S rename \-S renameat \-F auid>=1000 \-F auid!=4294967295 \-k delete'
-    auditlogcheck[44]='\-a always,exit \-F arch=b32 \-S unlink \-S unlinkat \-S rename \-S renameat \-F auid>=1000 \-F auid!=4294967295 \-k delete'
-    auditlogcheck[45]='# 160 紀錄核心模組掛載與卸載事件'
-    auditlogcheck[46]='\-w /sbin/insmod \-p x \-k modules'
-    auditlogcheck[47]='\-w /sbin/rmmod \-p x \-k modules'
-    auditlogcheck[48]='\-w /sbin/modprobe \-p x \-k modules'
-    auditlogcheck[49]='\-a always,exit \-F arch=b64 \-S init_module \-S delete_module \-k modules'
-    auditlogcheck[50]='# 161 紀錄系統管理者活動日誌變更'
-    auditlogcheck[51]='\-w /var/log/sudo.log \-p wa \-k actions'
-    auditlogcheck[52]='# 162 紀錄chcon指令使用情形'
-    auditlogcheck[53]='\-a always,exit \-F path=/usr/bin/chcon \-F perm=x \-F auid>=1000 \-F auid!=4294967295 \-k perm_chng'
-    auditlogcheck[54]='# 163 紀錄ssh-agent程序使用情形'
-    auditlogcheck[55]='\-a always,exit \-F path=/usr/bin/ssh-agent \-F perm=x \-F auid>=1000 \-F auid!=4294967295 \-k privileged-ssh'
-    auditlogcheck[56]='# 164 紀錄unix_update程序使用情形'
-    auditlogcheck[57]='\-a always,exit \-F path=/sbin/unix_update \-F perm=x \-F auid>=1000 \-F auid!=4294967295 \-k privilegedunix-update'
-    auditlogcheck[58]='# 165 紀錄setfacl指令使用情形'
-    auditlogcheck[59]='\-a always,exit \-F path=/usr/bin/setfacl \-F perm=x \-F auid>=1000 \-F auid!=4294967295 \-k perm_chng'
-    auditlogcheck[60]='# 166 紀錄finit_module指令使用情形'
-    auditlogcheck[61]='\-a always,exit \-F arch=b32 \-S finit_module \-F auid>=1000 \-F auid!=4294967295 \-k module_chng'
-    auditlogcheck[62]='\-a always,exit \-F arch=b64 \-S finit_module \-F auid>=1000 \-F auid!=4294967295 \-k module_chng'
-    auditlogcheck[63]='# 167 紀錄open_by_handle_at系統呼叫使用情形'
-    auditlogcheck[64]='\-a always,exit \-F arch=b32 \-S open_by_handle_at \-F exit=-EPERM \-F auid>=1000 \-F auid!=4294967295 \-k perm_access'
-    auditlogcheck[65]='\-a always,exit \-F arch=b64 \-S open_by_handle_at \-F exit=-EPERM \-F auid>=1000 \-F auid!=4294967295 \-k perm_access'
-    auditlogcheck[66]='\-a always,exit \-F arch=b32 \-S open_by_handle_at \-F exit=-EACCES \-F auid>=1000 \-F auid!=4294967295 \-k perm_access'
-    auditlogcheck[67]='\-a always,exit \-F arch=b64 \-S open_by_handle_at \-F exit=-EACCES \-F auid>=1000 \-F auid!=4294967295 \-k perm_access'
-    auditlogcheck[68]='# 168 紀錄usermod指令使用情形'
-    auditlogcheck[69]='\-a always,exit \-F path=/usr/sbin/usermod \-F perm=x \-F auid>=1000 \-F auid!=4294967295 \-k privilegedusermod'
-
-
-    # Audit Logg Add
-    auditlogadd[1]='# 148 紀錄系統管理者活動'
-    auditlogadd[2]='-w /etc/sudoers -p wa -k scope'
-    auditlogadd[3]='-w /etc/sudoers.d/ -p wa -k scope'
-    auditlogadd[4]='# 149 紀錄變更登入與登出資訊事件'
-    auditlogadd[5]='-w /var/run/faillock/ -p wa -k logins'
-    auditlogadd[6]='-w /var/log/lastlog -p wa -k logins'
-    auditlogadd[7]='# 150 紀錄會談啟始資訊'
-    auditlogadd[8]='-w /var/run/utmp -p wa -k session'
-    auditlogadd[9]='-w /var/log/wtmp -p wa -k logins'
-    auditlogadd[10]='-w /var/log/btmp -p wa -k logins'
-    auditlogadd[11]='# 152 紀錄變更系統強制存取控制事件'
-    auditlogadd[12]='-w /etc/selinux/ -p wa -k MAC-policy'
-    auditlogadd[13]='-w /usr/share/selinux/ -p wa -k MAC-policy'
-    auditlogadd[14]='# 153 紀錄變更系統網路環境事件'
-    auditlogadd[15]='-a always,exit -F arch=b64 -S sethostname -S setdomainname -k system-locale'
-    auditlogadd[16]='-a always,exit -F arch=b32 -S sethostname -S setdomainname -k system-locale'
-    auditlogadd[17]='-w /etc/issue -p wa -k system-locale'
-    auditlogadd[18]='-w /etc/issue.net -p wa -k system-locale'
-    auditlogadd[19]='-w /etc/hosts -p wa -k system-locale'
-    auditlogadd[20]='-w /etc/sysconfig/network-scripts/ -p wa -k system-locale'
-    auditlogadd[21]='# 154 紀錄變更自主存取控制權限事件'
-    auditlogadd[22]='-a always,exit -F arch=b64 -S chmod -S fchmod -S fchmodat -F auid>=1000 -F auid!=4294967295 -k perm_mod'
-    auditlogadd[23]='-a always,exit -F arch=b32 -S chmod -S fchmod -S fchmodat -F auid>=1000 -F auid!=4294967295 -k perm_mod'
-    auditlogadd[24]='-a always,exit -F arch=b64 -S chown -S fchown -S fchownat -S lchown -F auid>=1000 -F auid!=4294967295 -k perm_mod'
-    auditlogadd[25]='-a always,exit -F arch=b32 -S chown -S fchown -S fchownat -S lchown -F auid>=1000 -F auid!=4294967295 -k perm_mod'
-    auditlogadd[26]='-a always,exit -F arch=b64 -S setxattr -S lsetxattr -S fsetxattr -S removexattr -S lremovexattr -S fremovexattr -F auid>=1000 -F auid!=4294967295 -k perm_mod'
-    auditlogadd[27]='-a always,exit -F arch=b32 -S setxattr -S lsetxattr -S fsetxattr -S removexattr -S lremovexattr -S fremovexattr -F auid>=1000 -F auid!=4294967295 -k perm_mod'
-    auditlogadd[28]='# 155 紀錄不成功之未經授權檔案存取'
-    auditlogadd[29]='-a always,exit -F arch=b64 -S creat -S open -S openat -S truncate -S ftruncate -F exit=-EACCES -F auid>=1000 -F auid!=4294967295 -k access'
-    auditlogadd[30]='-a always,exit -F arch=b32 -S creat -S open -S openat -S truncate -S ftruncate -F exit=-EACCES -F auid>=1000 -F auid!=4294967295 -k access'
-    auditlogadd[31]='-a always,exit -F arch=b64 -S creat -S open -S openat -S truncate -S ftruncate -F exit=-EPERM -F auid>=1000 -F auid!=4294967295 -k access'
-    auditlogadd[32]='-a always,exit -F arch=b32 -S creat -S open -S openat -S truncate -S ftruncate -F exit=-EPERM -F auid>=1000 -F auid!=4294967295 -k access'
-    auditlogadd[33]='# 156 紀錄變更使用者或群組資訊事件'
-    auditlogadd[34]='-w /etc/group -p wa -k identity'
-    auditlogadd[35]='-w /etc/passwd -p wa -k identity'
-    auditlogadd[36]='-w /etc/gshadow -p wa -k identity'
-    auditlogadd[37]='-w /etc/shadow -p wa -k identity'
-    auditlogadd[38]='-w /etc/security/opasswd -p wa -k identity'
-    auditlogadd[39]='# 157 紀錄變更檔案系統掛載事件'
-    auditlogadd[40]='-a always,exit -F arch=b64 -S mount -F auid>=1000 -F auid!=4294967295 -k mounts'
-    auditlogadd[41]='-a always,exit -F arch=b32 -S mount -F auid>=1000 -F auid!=4294967295 -k mounts'
-    auditlogadd[42]='# 159 紀錄檔案刪除事件'
-    auditlogadd[43]='-a always,exit -F arch=b64 -S unlink -S unlinkat -S rename -S renameat -F auid>=1000 -F auid!=4294967295 -k delete'
-    auditlogadd[44]='-a always,exit -F arch=b32 -S unlink -S unlinkat -S rename -S renameat -F auid>=1000 -F auid!=4294967295 -k delete'
-    auditlogadd[45]='# 160 紀錄核心模組掛載與卸載事件'
-    auditlogadd[46]='-w /sbin/insmod -p x -k modules'
-    auditlogadd[47]='-w /sbin/rmmod -p x -k modules'
-    auditlogadd[48]='-w /sbin/modprobe -p x -k modules'
-    auditlogadd[49]='-a always,exit -F arch=b64 -S init_module -S delete_module -k modules'
-    auditlogadd[50]='# 161 紀錄系統管理者活動日誌變更'
-    auditlogadd[51]='-w /var/log/sudo.log -p wa -k actions'
-    auditlogadd[52]='# 162 紀錄chcon指令使用情形'
-    auditlogadd[53]='-a always,exit -F path=/usr/bin/chcon -F perm=x -F auid>=1000 -F auid!=4294967295 -k perm_chng'
-    auditlogadd[54]='# 163 紀錄ssh-agent程序使用情形'
-    auditlogadd[55]='-a always,exit -F path=/usr/bin/ssh-agent -F perm=x -F auid>=1000 -F auid!=4294967295 -k privileged-ssh'
-    auditlogadd[56]='# 164 紀錄unix_update程序使用情形'
-    auditlogadd[57]='-a always,exit -F path=/sbin/unix_update -F perm=x -F auid>=1000 -F auid!=4294967295 -k privilegedunix-update'
-    auditlogadd[58]='# 165 紀錄setfacl指令使用情形'
-    auditlogadd[59]='-a always,exit -F path=/usr/bin/setfacl -F perm=x -F auid>=1000 -F auid!=4294967295 -k perm_chng'
-    auditlogadd[60]='# 166 紀錄finit_module指令使用情形'
-    auditlogadd[61]='-a always,exit -F arch=b32 -S finit_module -F auid>=1000 -F auid!=4294967295 -k module_chng'
-    auditlogadd[62]='-a always,exit -F arch=b64 -S finit_module -F auid>=1000 -F auid!=4294967295 -k module_chng'
-    auditlogadd[63]='# 167 紀錄open_by_handle_at系統呼叫使用情形'
-    auditlogadd[64]='-a always,exit -F arch=b32 -S open_by_handle_at -F exit=-EPERM -F auid>=1000 -F auid!=4294967295 -k perm_access'
-    auditlogadd[65]='-a always,exit -F arch=b64 -S open_by_handle_at -F exit=-EPERM -F auid>=1000 -F auid!=4294967295 -k perm_access'
-    auditlogadd[66]='-a always,exit -F arch=b32 -S open_by_handle_at -F exit=-EACCES -F auid>=1000 -F auid!=4294967295 -k perm_access'
-    auditlogadd[67]='-a always,exit -F arch=b64 -S open_by_handle_at -F exit=-EACCES -F auid>=1000 -F auid!=4294967295 -k perm_access'
-    auditlogadd[68]='# 168 紀錄usermod指令使用情形'
-    auditlogadd[69]='-a always,exit -F path=/usr/sbin/usermod -F perm=x -F auid>=1000 -F auid!=4294967295 -k privilegedusermod'
-    for index in {1..69}; do
-        if grep "${auditlogcheck[${index}]}" ${auditrulespath} >/dev/null; then
-            echo "檢查OK "${index}
+    index=1
+    while IFS= read -r line; do
+        auditlog[$index]="$line"
+        if grep "${auditlog[${index}]}" ${auditrulespath} >/dev/null; then
+            echo "檢查OK"
         else
-            sed -i '$a '"${auditlogadd[${index}]}" ${auditrulespath}
-            echo "已新增"${auditlogadd[${index}]}
+            sed -i '$a '"${auditlog[${index}]}" ${auditrulespath}
+            echo "已新增"${auditlog[${index}]}
         fi
-    done
-
+        index=$((index + 1))
+    done <<EOF
+# 148 紀錄系統管理者活動
+\-w /etc/sudoers \-p wa \-k scope
+\-w /etc/sudoers.d/ \-p wa \-k scope
+# 149 紀錄變更登入與登出資訊事件
+\-w /var/run/faillock/ \-p wa \-k logins
+\-w /var/log/lastlog \-p wa \-k logins
+# 150 紀錄會談啟始資訊
+\-w /var/run/utmp \-p wa \-k session
+\-w /var/log/wtmp \-p wa \-k logins
+\-w /var/log/btmp \-p wa \-k logins
+# 151 紀錄變更日期與時間事件
+-a always,exit -F arch=b64 -S adjtimex -S settimeofday -S clock_settime -k timechange
+-a always,exit -F arch=b32 -S stime -k time-change
+-w /etc/localtime -p wa -k timechange
+# 152 紀錄變更系統強制存取控制事件'
+\-w /etc/selinux/ \-p wa \-k MAC-policy
+\-w /usr/share/selinux/ \-p wa \-k MAC-policy
+# 153 紀錄變更系統網路環境事件
+\-a always,exit \-F arch=b64 \-S sethostname \-S setdomainname \-k system-locale
+\-a always,exit \-F arch=b32 \-S sethostname \-S setdomainname \-k system-locale
+\-w /etc/issue \-p wa \-k system-locale
+\-w /etc/issue.net \-p wa \-k system-locale
+\-w /etc/hosts \-p wa \-k system-locale
+\-w /etc/sysconfig/network-scripts/ \-p wa \-k system-locale
+# 154 紀錄變更自主存取控制權限事件
+\-a always,exit \-F arch=b64 \-S chmod \-S fchmod \-S fchmodat \-F auid>=1000 \-F auid!=4294967295 \-k perm_mod
+\-a always,exit \-F arch=b64 \-S chown \-S fchown \-S fchownat \-S lchown \-F auid>=1000 \-F auid!=4294967295 \-k perm_mod
+\-a always,exit \-F arch=b64 \-S setxattr \-S lsetxattr \-S fsetxattr \-S removexattr \-S lremovexattr \-S fremovexattr \-F auid>=1000 \-F auid!=4294967295 \-k perm_mod
+# 155 紀錄不成功之未經授權檔案存取
+\-a always,exit \-F arch=b64 \-S creat \-S open \-S openat \-S truncate \-S ftruncate \-F exit=-EACCES \-F auid>=1000 \-F auid!=4294967295 \-k access
+\-a always,exit \-F arch=b64 \-S creat \-S open \-S openat \-S truncate \-S ftruncate \-F exit=-EPERM \-F auid>=1000 \-F auid!=4294967295 \-k access
+# 156 紀錄變更使用者或群組資訊事件
+\-w /etc/group \-p wa \-k identity
+\-w /etc/passwd \-p wa \-k identity
+\-w /etc/gshadow \-p wa \-k identity
+\-w /etc/shadow \-p wa \-k identity
+\-w /etc/security/opasswd \-p wa \-k identity
+# 157 紀錄變更檔案系統掛載事件
+\-a always,exit \-F arch=b64 \-S mount \-F auid>=1000 \-F auid!=4294967295 \-k mounts
+\-a always,exit \-F arch=b32 \-S mount \-F auid>=1000 \-F auid!=4294967295 \-k mounts
+# 159 紀錄檔案刪除事件
+\-a always,exit \-F arch=b64 \-S unlink \-S unlinkat \-S rename \-S renameat \-F auid>=1000 \-F auid!=4294967295 \-k delete
+\-a always,exit \-F arch=b32 \-S unlink \-S unlinkat \-S rename \-S renameat \-F auid>=1000 \-F auid!=4294967295 \-k delete
+# 160 紀錄核心模組掛載與卸載事件
+\-w /sbin/insmod \-p x \-k modules
+\-w /sbin/rmmod \-p x \-k modules
+\-w /sbin/modprobe \-p x \-k modules
+\-a always,exit \-F arch=b64 \-S init_module \-S delete_module \-k modules
+# 161 紀錄系統管理者活動日誌變更
+\-w /var/log/sudo.log \-p wa \-k actions
+# 162 紀錄chcon指令使用情形
+\-a always,exit \-F path=/usr/bin/chcon \-F perm=x \-F auid>=1000 \-F auid!=4294967295 \-k perm_chng
+# 163 紀錄ssh-agent程序使用情形
+\-a always,exit \-F path=/usr/bin/ssh-agent \-F perm=x \-F auid>=1000 \-F auid!=4294967295 \-k privileged-ssh
+# 164 紀錄unix_update程序使用情形
+\-a always,exit \-F path=/sbin/unix_update \-F perm=x \-F auid>=1000 \-F auid!=4294967295 \-k privilegedunix-update
+# 165 紀錄setfacl指令使用情形
+\-a always,exit \-F path=/usr/bin/setfacl \-F perm=x \-F auid>=1000 \-F auid!=4294967295 \-k perm_chng
+# 166 紀錄finit_module指令使用情形
+\-a always,exit \-F arch=b32 \-S finit_module \-F auid>=1000 \-F auid!=4294967295 \-k module_chng
+\-a always,exit \-F arch=b64 \-S finit_module \-F auid>=1000 \-F auid!=4294967295 \-k module_chng
+# 167 紀錄open_by_handle_at系統呼叫使用情形
+\-a always,exit \-F arch=b32 \-S open_by_handle_at \-F exit=-EPERM \-F auid>=1000 \-F auid!=4294967295 \-k perm_access
+\-a always,exit \-F arch=b64 \-S open_by_handle_at \-F exit=-EPERM \-F auid>=1000 \-F auid!=4294967295 \-k perm_access
+\-a always,exit \-F arch=b32 \-S open_by_handle_at \-F exit=-EACCES \-F auid>=1000 \-F auid!=4294967295 \-k perm_access
+\-a always,exit \-F arch=b64 \-S open_by_handle_at \-F exit=-EACCES \-F auid>=1000 \-F auid!=4294967295 \-k perm_access
+# 168 紀錄usermod指令使用情形
+\-a always,exit \-F path=/usr/sbin/usermod \-F perm=x \-F auid>=1000 \-F auid!=4294967295 \-k privilegedusermod
+# 169 紀錄chaacl指令使用情形
+\-a always,exit \-F path=/usr/bin/chacl \-F perm=x \-F auid>=1000 \-F auid!=4294967295 \-k perm_chng
+# 170 紀錄kmod指令使用情形
+\-w /bin/kmod \-p x \-k modules
+# 171 紀錄Pam_Faillock日誌檔案
+\-w /var/log/faillock \-p wa \-k logins
+# 172 紀錄execve系統呼叫使用情形
+\-a always,exit \-F arch=b32 \-S execve \-C uid!=euid \-F key=execpriv
+\-a always,exit \-F arch=b64 \-S execve \-C uid!=euid \-F key=execpriv
+\-a always,exit \-F arch=b32 \-S execve \-C gid!=egid \-F key=execpriv
+\-a always,exit \-F arch=b64 \-S execve \-C gid!=egid \-F key=execpriv
+# 173 auditd設定不變模式
+# Set enabled flag.
+# To lock the audit configuration so that it can't be changed, pass a 2 as the argument.
+-e 2
+EOF
+    echo "174~175 安裝與啟用rsyslog套件"
+    if rpm -q rsyslog >/dev/null 2>&1; then
+        echo "rsyslog package is already installed."
+    else
+        dnf install -y rsyslog
+        systemctl --now enable rsyslog
+    fi
+    echo "176 設定rsyslog日誌檔案預設權限"
+    if [ -f "/etc/rsyslog.conf" ]; then
+        if stat -c "%a" /etc/rsyslog.conf | grep 640 >/dev/null; then
+            echo "/etc/rsyslog.conf 檢查OK"
+        else
+            chmod 640 /etc/rsyslog.conf
+            echo "/etc/rsyslog.conf 已設定640"
+        fi
+    else
+        echo "/etc/rsyslog.conf file not found, no set."
+    fi
+    if [ -f "/etc/rsyslog.d/"*".conf" ]; then
+        if stat -c "%a" /etc/rsyslog.d/*.conf | grep 640 >/dev/null; then
+            echo "/var/log/audit/audit.log 檢查OK"
+        else
+            chmod 640 /etc/rsyslog.d/*.conf
+            echo "/etc/rsyslog.d/*.conf 已設定640"
+        fi
+    else
+        echo "/etc/rsyslog.d 資料夾沒有檔案，不用設定。"
+    fi
+    
+    echo "177 設定rsyslog日誌紀錄規則"
+    if [ -f "/etc/rsyslog.conf" ]; then
+        if grep .*/var/log/secure$ /etc/rsyslog.conf | awk '{print $1}' | grep [a][u][t][h][.][*] >/dev/null; then
+            echo "檢查OK"
+        else
+            sed -i 's/\(.*\)\(\/var\/log\/secure\)/auth\.\*;\1\2/' /etc/rsyslog.conf
+            echo "已增加auth.*"
+        fi
+        if grep .*/var/log/secure$ /etc/rsyslog.conf | awk '{print $1}' | grep [a][u][t][h][p][r][i][v][.][*] >/dev/null; then
+        echo "檢查OK"
+        else
+            sed -i 's/\(.*\)\(\/var\/log\/secure\)/authpriv\.\*;\1\2/' /etc/rsyslog.conf
+            echo "已增加authpriv.*"
+        fi
+        if grep .*/var/log/messages$ /etc/rsyslog.conf | awk '{print $1}' | grep [d][a][e][m][o][n][.][*] >/dev/null; then
+            echo "檢查OK"
+        else
+            sed -i 's/\(.*\)\(\/var\/log\/messages\)/daemon\.\*;\1\2/' /etc/rsyslog.conf
+            echo "已增加daemon.*"
+        fi
+    else
+        echo "/etc/rsyslog.conf file not found, no set."
+        echo "Can't config FCB ID 177."
+    fi
 }
 
-# 169 紀錄chaacl指令使用情形 啟用
-sed -i '$a -a always,exit -F path=/usr/bin/chacl -F perm=x -F auid>=1000 -F auid!=4294967295 -k perm_chng' ${auditrulespath}
+    echo "139 稽核日誌「目錄」擁有者與群組"
+    if stat -c "%U %G" /var/log/audit | grep -E root.*root >/dev/null; then
+        echo "/var/log/audit 檢查OK"
+    else
+        grep -iw log_file /etc/audit/auditd.conf | awk '{print $3}' | sed 's/\(.*\)\(\/.*..*\)/\1/' | xargs -I {} chown root:root {}
+        echo "/var/log/audit 已設定root:root"
+    fi
 
-# 170 紀錄kmod指令使用情形 啟用
-sed -i '$a -w /bin/kmod -p x -k modules' ${auditrulespath}
-
-# 171 紀錄Pam_Faillock日誌檔案 啟用
-sed -i '$a -w /var/log/faillock -p wa -k logins' ${auditrulespath}
-
-# 172 紀錄execve系統呼叫使用情形 啟用
-sed -i '$a -a always,exit -F arch=b32 -S execve -C uid!=euid -F key=execpriv' ${auditrulespath}
-sed -i '$a -a always,exit -F arch=b64 -S execve -C uid!=euid -F key=execpriv' ${auditrulespath}
-sed -i '$a -a always,exit -F arch=b32 -S execve -C gid!=egid -F key=execpriv' ${auditrulespath}
-sed -i '$a -a always,exit -F arch=b64 -S execve -C gid!=egid -F key=execpriv' ${auditrulespath}
-
-# 173 auditd設定不變模式
-sed -i '12a # Set enabled flag.' ${auditrulespath}
-sed -i '13a # To lock the audit configuration so that it can’t be changed, pass a 2 as the argument.' ${auditrulespath}
-sed -i '14a -e 2' ${auditrulespath}
-
-# 174 rsyslog套件 安裝
-dnf install -y rsyslog
-
-# 175 rsyslog服務 啟用
-systemctl --now enable rsyslog
-
-# 176 設定rsyslog日誌檔案預設權限
-chmod 640 /etc/rsyslog.conf
-chmod 640 /etc/rsyslog.d/*.conf
 
 # 177 設定rsyslog 日誌紀錄規則
 sed -i '46a daemon.*\t\t\t\t\t\t\/var\/log\/messages' /etc/rsyslog.conf
