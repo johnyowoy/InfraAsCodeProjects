@@ -1,5 +1,5 @@
 # 系統服務、安裝與維護軟體
-function ServiceSystem () {
+function SystemService () {
     echo "95 disable avahi-daemon service"
     echo "96 disable snmp service"
     echo "97 disable squid service"
@@ -42,4 +42,4 @@ function ServiceSystem () {
     echo "93 chrony校時設定"
     echo "94 disable rsyncd service"
 }
-ServiceSystem
+SystemService

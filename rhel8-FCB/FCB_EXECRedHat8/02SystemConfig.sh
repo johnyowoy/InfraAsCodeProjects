@@ -1,5 +1,5 @@
 # 系統設定與維護
-function ConfigurationAndMaintenanceInSystem () {
+function SystemConfig () {
     # Log異常檢視
     # 符合FCB Log
     FCB_LOG_SUCCESS='/root/FCB_LOG_SUCCESS.txt'
@@ -186,4 +186,4 @@ EOF
         fi
     done
 }
-ConfigurationAndMaintenanceInSystem
+SystemConfig

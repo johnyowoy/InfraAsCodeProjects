@@ -1,6 +1,6 @@
+# 基本項目
 # 磁碟與檔案系統
 function DiskFilesystem () {
-
     echo "1 停用cramfs檔案系統"
     if [ -f /etc/modprobe.d/cramfs.conf ]; then
         cramfsfile='/etc/modprobe.d/cramfs.conf'
