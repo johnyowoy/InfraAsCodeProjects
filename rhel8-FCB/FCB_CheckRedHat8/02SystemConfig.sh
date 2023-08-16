@@ -232,7 +232,7 @@ if grep ^hard.*core.*0 /etc/security/limits.conf >/dev/null; then
     if grep ^fs.suid_dumpable.*=.*0 /etc/sysctl.conf >/dev/null; then
         echo 'OK: 42 核心傾印功能' >> ${FCB_SUCCESS}
     else
-        cat << EOF >> ${FCB_FIX}
+        cat <<EOF >> ${FCB_FIX}
 
 FIX: 42 核心傾印功能
 ====== 不符合FCB規範 ======
@@ -243,10 +243,10 @@ FIX: 42 核心傾印功能
 fs.suid_dumpable = 0
 # (方法二)開啟終端機，執行以下指令，設定核心參數：
 sysctl -w fs.suid_dumpable=0
-EOF    
+EOF
     fi
 else
-    cat << EOF >> ${FCB_FIX}
+    cat <<EOF >> ${FCB_FIX}
 
 FIX: 42 核心傾印功能
 ====== 不符合FCB規範 ======
