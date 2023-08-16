@@ -86,8 +86,7 @@ function InstallingDocker () {
 
 function InstallingKubernetes () {
    # disable firewall
-   systemctl stop firewalld
-   systemctl disable firewalld
+   systemctl --now disable firewalld
    # disable swap
    swapoff -a
    sed -i '/ swap / s/^\(.*\)$/#\1/g' /etc/fstab
