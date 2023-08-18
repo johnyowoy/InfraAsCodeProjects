@@ -44,11 +44,14 @@ echo "33 安裝sudo package"
 if rpm -q sudo >/dev/null 2>&1; then
     echo 'OK: 33 sudo 套件' >> ${FCB_SUCCESS}
 else
-    echo 'FIX: 33 sudo 套件' >> ${FCB_FIX}
-    echo "====== 不符合FCB規範 ======" >> ${FCB_FIX}
-    rpm -q sudo >> ${FCB_FIX}
-    echo "====== FCB建議設定值 ======" >> ${FCB_FIX}
-    echo "安裝sudo package" >> ${FCB_FIX}
+    cat << EOF >> ${FCB_FIX}
+
+FIX: 33 sudo 套件
+====== 不符合FCB規範 ======
+$(rpm -q sudo)
+====== FCB建議設定值 ======
+安裝sudo package
+EOF
 fi
 
 # 34 設定sudo指令使用pty
@@ -144,7 +147,17 @@ crontab -u root -e
 EOF
     fi
 else
-    echo 'cron root file does not exists.' >> ${FCB_FIX}
+    cat << EOF >> ${FCB_FIX}
+
+FIX: 37 定期檢查檔案系統完整性
+====== 不符合FCB規範 ======
+/var/spool/cron/root file does not exists.
+====== FCB建議設定值 ======
+# 設定每天5點進行檔案系統完整性檢查
+====== FCB設定方法值 ======
+crontab -u root -e
+0 5 * * * /usr/sbin/aide --check
+EOF
 fi
 
 # 38 39 開機載入程式設定檔 檔案擁有者與權限
@@ -230,7 +243,35 @@ fi
 echo '42 核心傾印功能'
 if grep ^hard.*core.*0 /etc/security/limits.conf >/dev/null; then
     if grep ^fs.suid_dumpable.*=.*0 /etc/sysctl.conf >/dev/null; then
-        echo 'OK: 42 核心傾印功能' >> ${FCB_SUCCESS}
+        if grep ^Storage=none$ /etc/systemd/coredump.conf >/dev/null; then
+            if grep ^ProcessSizeMax=0$ /etc/systemd/coredump.conf >/dev/null; then
+                echo 'OK: 42 核心傾印功能' >> ${FCB_SUCCESS}
+            else
+                cat <<EOF >> ${FCB_FIX}
+
+FIX: 42 核心傾印功能
+====== 不符合FCB規範 ======
+$(grep ProcessSizeMax /etc/systemd/coredump.conf)
+====== FCB建議設定值 ======
+ProcessSizeMax=0
+====== FCB設定方法值 ======
+# 編輯/etc/systemd/coredump.conf 檔案，修改以下內容：
+ProcessSizeMax=0
+EOF
+            fi
+        else
+            cat <<EOF >> ${FCB_FIX}
+
+FIX: 42 核心傾印功能
+====== 不符合FCB規範 ======
+$(grep Storage /etc/systemd/coredump.conf)
+====== FCB建議設定值 ======
+Storage=none
+====== FCB設定方法值 ======
+# 編輯/etc/systemd/coredump.conf 檔案，修改以下內容：
+Storage=none
+EOF
+        fi
     else
         cat <<EOF >> ${FCB_FIX}
 
@@ -259,31 +300,70 @@ EOF
 fi
 
 echo '43 記憶體位址空間配置隨機載入'
-if grep kernel.randomize_va_space.*=.*2 /etc/sysctl.conf >/dev/null; then
-    echo '43 kernel.randomize_va_space=2 檢查ok' >> ${FCB_SUCCESS}
+if grep ^kernel.randomize_va_space.*=.*2 /etc/sysctl.conf >/dev/null; then
+    echo 'OK: 43 記憶體位址空間配置隨機載入' >> ${FCB_SUCCESS}
 else
-    echo '43 kernel.randomize_va_space 不符合規範, 請修正 kernel.randomize_va_space = 2' >> ${FCB_FIX}
-    echo '指令參考 sysctl -w kernel.randomize_va_space=2 >> /etc/sysctl.conf' >> ${FCB_FIX}
+    cat <<EOF >> ${FCB_FIX}
+
+FIX: 43 記憶體位址空間配置隨機載入
+====== 不符合FCB規範 ======
+/etc/sysctl.conf 尚未設定記憶體位址空間配置隨機載入
+====== FCB建議說明值 ======
+# 隨機配置堆疊(Stack)、記憶體映射函數(mmap)、vDSO 頁面及堆積(Heap)
+====== FCB建議設定值 ======
+# 2
+====== FCB設定方法值 ======
+# (方法一)編輯/etc/sysctl.conf 或 /etc/sysctl.d/目錄下檔案，設定參數如下：
+sysctl -w kernel.randomize_va_space = 2
+# (方法二)開啟終端機，執行以下指令，設定核心參數：
+sysctl -w kernel.randomize_va_space=2 >> /etc/sysctl.conf
+EOF
 fi
 
 echo '44 設定全系統加密原則'
 if grep -E -i '^\s*(FUTURE|FIPS)\s*(\s+#.*)?$' /etc/crypto-policies/config >/dev/null; then
-    echo '44 設定全系統加密原則 檢查ok' >> ${FCB_SUCCESS}
+    echo 'OK: 44 設定全系統加密原則' >> ${FCB_SUCCESS}
 else
-    echo '44 全系統加密原則 不符合規範, 請修正為FUTURE或FIPS' >> ${FCB_SUCCESS}
+    cat <<EOF >> ${FCB_FIX}
+
+FIX: 44 全系統加密原則
+====== 不符合FCB規範 ======
+$(cat /etc/crypto-policies/config)
+====== FCB建議說明值 ======
+# 設定全系統加密原則使用FUTURE 或 FIPS 原則，避免使用較舊且易被攻擊之加密演算法
+# FUTURE: 採取保守之安全原則，可承受近期相關攻擊，不允許使用 SHA-1 演算法，要求 RSA 密鑰與Diffie-Hellman 金鑰至少為3,072 位元
+# FIPS: 符合 FIPS140-2 要求原則，使用內建之 fipsmode-setup 工具，將作業系統切換到 FIPS 模式
+====== FCB建議設定值 ======
+# FUTURE 或 FIPS
+====== FCB設定方法值 ======
+# (方法一)執行以下指令，將系統設定為「FUTURE」原則：
+update-crypto-policies --set FUTURE
+# 接續執行以下指令，以套用更新後之全系統加密原則：
+update-crypto-policies
+# (方法二)執行以下指令，將系統設定為「FIPS」原則，並重新開機，以使生效：
+fips-mode-setup --enable
+EOF
 fi
 
 # 45~60
-echo "45~60 設定passwd shadow group gshadow 檔案權限"
+echo "45~60 檢查passwd shadow group gshadow 檔案擁有者 群組 權限"
 index=1
 while IFS= read -r line; do
     AuditTools[$index]="$line"
     if [ -f "/etc/${AuditTools[${index}]}" ]; then
         if stat -c "%U %G" /etc/${AuditTools[${index}]} | grep -E root.*root >/dev/null; then
-            echo "/etc/${AuditTools[${index}]} 檔案擁有者與群組檢查OK" >> ${FCB_SUCCESS}
+            echo "OK: ${AuditTools[${index}]} 檔案擁有者與群組" >> ${FCB_SUCCESS}
         else
-            echo "/etc/${AuditTools[${index}]} 檔案擁有者或群組不符合規範 請修正為root" >> ${FCB_FIX}
-            stat -c "檔名%n 擁有者%U 群組%G" /etc/${AuditTools[${index}]} >> ${FCB_FIX}
+            cat <<EOF >> ${FCB_FIX}
+
+FIX: ${AuditTools[${index}]} 檔案擁有者與群組
+====== 不符合FCB規範 ======
+$(stat -c "檔名%n 擁有者%U 群組%G" /etc/${AuditTools[${index}]})
+====== FCB建議設定值 ======
+# root:root
+====== FCB設定方法值 ======
+chown root:root ${AuditTools[${index}]}
+EOF
         fi
     else
         echo "File /etc/${AuditTools[${index}]} does not exists" >> ${FCB_FIX}
@@ -306,10 +386,18 @@ while IFS= read -r line; do
     AuditTools[$index]="$line"
     if [ -f "/etc/${AuditTools[${index}]}" ]; then
         if stat -c "%a" /etc/${AuditTools[${index}]} | grep [0-6][0-4][0-4] >/dev/null; then
-            echo "/etc/${AuditTools[${index}]} 檔案權限檢查OK" >> ${FCB_SUCCESS}
+            echo "OK: ${AuditTools[${index}]} 檔案權限" >> ${FCB_SUCCESS}
         else
-            echo "/etc/${AuditTools[${index}]} 檔案權限不符合規範 請修正為644或更低權限" >> ${FCB_FIX}
-            stat -c "檔名%n 權限%a" /etc/${AuditTools[${index}]} >> ${FCB_FIX}
+            cat <<EOF >> ${FCB_FIX}
+
+FIX: ${AuditTools[${index}]} 檔案擁有者與群組
+====== 不符合FCB規範 ======
+$(stat -c "檔名%n 權限%a" /etc/${AuditTools[${index}]})
+====== FCB建議設定值 ======
+# 644或更低權限
+====== FCB設定方法值 ======
+chmod 600 ${AuditTools[${index}]}
+EOF
         fi
     else
         echo "File /etc/${AuditTools[${index}]} does not exists" >> ${FCB_FIX}
@@ -328,10 +416,18 @@ while IFS= read -r line; do
     AuditTools[$index]="$line"
     if [ -f "/etc/${AuditTools[${index}]}" ]; then
         if stat -c "%a" /etc/${AuditTools[${index}]} | grep 0 >/dev/null; then
-            echo "/etc/${AuditTools[${index}]} 檔案權限檢查OK" >> ${FCB_SUCCESS}
+            echo "OK: /etc/${AuditTools[${index}]} 檔案權限" >> ${FCB_SUCCESS}
         else
-            echo "/etc/${AuditTools[${index}]} 檔案權限不符合規範 請修正為000" >> ${FCB_FIX}
-            stat -c "檔名%n 權限%a" /etc/${AuditTools[${index}]} >> ${FCB_FIX}
+            cat <<EOF >> ${FCB_FIX}
+
+FIX: ${AuditTools[${index}]} 檔案擁有者與群組
+====== 不符合FCB規範 ======
+$(stat -c "檔名%n 權限%a" /etc/${AuditTools[${index}]})
+====== FCB建議設定值 ======
+# 000
+====== FCB設定方法值 ======
+chmod 0 ${AuditTools[${index}]}
+EOF
         fi
     else
         echo "File /etc/${AuditTools[${index}]} does not exists" >> ${FCB_FIX}
@@ -346,55 +442,86 @@ gshadow-
 EOF
 
 echo '61 其他使用者寫入具有全域寫入權限檔案'
-# 檢查/是否有other具有可寫入權限的檔案
-files=$(find / -xdev -type f -perm -0002)
 # 檢查是否找到other具有可寫入權限的檔案
-if [ -n "$files" ]; then
-    echo '61 以下檔案是other具有可寫入權限' >> ${FCB_SUCCESS}
-    echo "$files" >> ${FCB_SUCCESS}
-    find / -xdev -type f -perm -0002 -exec chmod o-w {} \;
-    echo '目前檔案已移除other具有可寫入權限' >> ${FCB_SUCCESS}
+if [ -n "$(find / -xdev -type f -perm -0002)" ]; then
+    cat <<EOF >> ${FCB_FIX}
+
+FIX: 61 其他使用者寫入具有全域寫入權限檔案
+====== 不符合FCB規範 ======
+# 以下檔案是other具有可寫入權限
+$(find / -xdev -type f -perm -0002)
+====== FCB建議設定值 ======
+# 禁止寫入
+====== FCB設定方法值 ======
+# 根目錄找出具有全域寫入權限之檔案:
+find / -xdev -type f -perm -0002
+# 針對所找到之檔案，執行下列指令，以移除其他身分寫入權限：
+chmod o-w (檔案名稱)
+EOF
 else
-    echo '61 沒有找到其他使用者寫入具有全域寫入權限檔案, 檢查ok' >> ${FCB_SUCCESS}
+    echo 'OK: 61 其他使用者寫入具有全域寫入權限檔案' >> ${FCB_SUCCESS}
 fi
 
 echo '62 檢查所有檔案與目錄之「擁有者」'
 # 找出/的所有檔案為不合法使用者
-files=$(find / -xdev -nouser)
 # 檢查/的所有檔案是否為合法使用者
-if [ -n "$files" ]; then
+if [ -n "$(find / -xdev -nouser)" ]; then
     echo '62 以下檔案為不合法使用者，請針對找到的檔案與目錄指定合法使用者或移除' >> ${FCB_FIX}
     echo '語法參考 chown (使用者) (檔案名稱或目錄名稱) 或是 rm (檔案名稱或目錄名稱)' >> ${FCB_FIX}
     echo "$files" >> ${FCB_FIX}
     echo '========== END ==========' >> ${FCB_FIX}
+    cat <<EOF >> ${FCB_FIX}
+
+FIX: 62 檢查所有檔案與目錄之「擁有者」
+====== 不符合FCB規範 ======
+# 以下檔案為不合法使用者，請針對找到的檔案與目錄指定合法使用者或移除
+$(find / -xdev -nouser)
+====== FCB建議設定值 ======
+# 所有檔案與目錄擁有者皆為合法使用者
+====== FCB設定方法值 ======
+# 根目錄找出擁有者不是合法使用者之檔案或目錄：
+find / -xdev -nouser
+# 針對所找到之檔案與目錄指定合法使用者或移除：
+chmod (使用者) (檔案名稱或目錄名稱)
+或是
+rm (檔案名稱或目錄名稱)
+EOF
 else
-    echo '62 掃描後根目錄所有檔案皆為合法使用者, 檢查ok' >> ${FCB_SUCCESS}
+    echo 'OK: 62 檢查所有檔案與目錄之「擁有者」皆為合法使用者' >> ${FCB_SUCCESS}
 fi
 
 echo '63 檢查所有檔案與目錄之擁有「群組」'
 # 找出/的所有檔案為不合法群組
-files=$(find / -xdev -nouser)
 # 檢查/的所有檔案是否為合法群組
-if [ -n "$files" ]; then
-    echo '63 以下檔案為不合法群組，請針對找到的檔案與目錄指定合法群組或移除' >> ${FCB_FIX}
-    echo '語法參考 chgrp (群組) (檔案名稱或目錄名稱) 或是 rm (檔案名稱或目錄名稱)' >> ${FCB_FIX}
-    echo "$files" >> ${FCB_FIX}
-    echo '========== END ==========' >> ${FCB_FIX}
+if [ -n "$(find / -xdev -nogroup)" ]; then
+    cat <<EOF >> ${FCB_FIX}
+
+FIX: 63 檢查所有檔案與目錄之擁有「群組」
+====== 不符合FCB規範 ======
+# 以下檔案為不合法群組，請針對找到的檔案與目錄指定合法群組或移除
+$(find / -xdev -nogroup)
+====== FCB建議設定值 ======
+# 所有檔案與目錄擁有群組皆為合法群組
+====== FCB設定方法值 ======
+chgrp (群組) (檔案名稱或目錄名稱)
+或是
+rm (檔案名稱或目錄名稱)
+=========================
+EOF
 else
-    echo '63 掃描後根目錄所有檔案皆為合法群組, 檢查ok' >> ${FCB_SUCCESS}
+    echo 'OK: 63 檢查所有檔案與目錄皆為合法群組' >> ${FCB_SUCCESS}
 fi
 
 echo '64 所有具有全域寫入權限目錄之擁有者'
 # 找出/的所有具有全域寫入權限目錄之擁有者
-files=$(find / -xdev -type d -perm -0002 -uid +999 -print)
 # 檢查/的具有全域寫入權限目錄之擁有者
-if [ -n "$files" ]; then
+if [ -n "$(find / -xdev -type d -perm -0002 -uid +999 -print)" ]; then
     echo '64 以下目錄為具有全域寫入權限目錄之擁有者, 請設定目錄擁有者為root或其他系統帳號' >> ${FCB_FIX}
     echo '語法參考 chown (使用者) (目錄名稱)' >> ${FCB_FIX}
     echo "$files" >> ${FCB_FIX}
     echo '========== END ==========' >> ${FCB_FIX}
 else
-    echo '64 掃描根目錄, 檢查ok' >> ${FCB_SUCCESS}
+    echo 'OK: 64 檢查所有具有全域寫入權限目錄之擁有者皆為root或其他系統帳號' >> ${FCB_SUCCESS}
 fi
 
 echo '65 所有具有全域寫入權限目錄之擁有群組'
@@ -518,7 +645,11 @@ for x in $(echo "$RPCV" | tr ":" " "); do
     fi
 done
 
-echo '75 76 77 passwd shadow group不允許存在「+」符號'
+echo << EOF
+75 passwd不允許存在「+」符號
+76 shadow不允許存在「+」符號
+77 group不允許存在「+」符號
+EOF
 index=1
 while IFS= read -r line; do
     auditlog[$index]="$line"
