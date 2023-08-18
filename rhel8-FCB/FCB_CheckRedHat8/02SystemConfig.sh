@@ -177,7 +177,7 @@ else
     echo "chmod 600 /boot/grub2/grub.cfg" >> ${FCB_FIX}
 fi
 if stat -c "%a" /boot/grub2/grubenv | grep [0-6][0][0] >/dev/null; then
-    echo "39 開機載入程式設定檔案 grubenv 檔案權限檢查OK" >> ${FCB_SUCCESS}
+    echo "OK: 39 開機載入程式設定檔案 grubenv 檔案權限" >> ${FCB_SUCCESS}
 else
     echo 'FIX: 39 開機載入程式設定檔案 grubenv 檔案權限' >> ${FCB_FIX}
     echo "====== 不符合FCB規範 ======" >> ${FCB_FIX}
