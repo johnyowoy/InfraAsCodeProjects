@@ -516,103 +516,179 @@ echo '64 所有具有全域寫入權限目錄之擁有者'
 # 找出/的所有具有全域寫入權限目錄之擁有者
 # 檢查/的具有全域寫入權限目錄之擁有者
 if [ -n "$(find / -xdev -type d -perm -0002 -uid +999 -print)" ]; then
-    echo '64 以下目錄為具有全域寫入權限目錄之擁有者, 請設定目錄擁有者為root或其他系統帳號' >> ${FCB_FIX}
-    echo '語法參考 chown (使用者) (目錄名稱)' >> ${FCB_FIX}
-    echo "$files" >> ${FCB_FIX}
-    echo '========== END ==========' >> ${FCB_FIX}
+    cat <<EOF >> ${FCB_FIX}
+
+FIX: 64 所有具有全域寫入權限目錄之擁有者
+====== 不符合FCB規範 ======
+# 以下目錄為具有全域寫入權限目錄之擁有者
+$(find / -xdev -type d -perm -0002 -uid +999 -print)
+====== FCB建議設定值 ======
+# 請設定目錄擁有者為root或其他系統帳號
+====== FCB設定方法值 ======
+chown root (目錄名稱)
+=========================
+EOF
 else
     echo 'OK: 64 檢查所有具有全域寫入權限目錄之擁有者皆為root或其他系統帳號' >> ${FCB_SUCCESS}
 fi
 
 echo '65 所有具有全域寫入權限目錄之擁有群組'
 # 找出/的所有具有全域寫入權限目錄之擁有群組
-files=$(find / -xdev -type d -perm -0002 -gid +999 -print)
 # 檢查/的具有全域寫入權限目錄之擁有群組
-if [ -n "$files" ]; then
-    echo '65 以下目錄為具有全域寫入權限目錄之擁有群組, 請針對找到的設定目錄擁有者為root或其他系統群組(sys, bin或應用程式群組)' >> ${FCB_FIX}
-    echo '語法參考 chgrp (群組) (目錄名稱)' >> ${FCB_FIX}
-    echo "$files" >> ${FCB_FIX}
-    echo '========== END ==========' >> ${FCB_FIX}
+if [ -n "$(find / -xdev -type d -perm -0002 -gid +999 -print)" ]; then
+    cat <<EOF >> ${FCB_FIX}
+
+FIX: 65 所有具有全域寫入權限目錄之擁有群組
+====== 不符合FCB規範 ======
+以下目錄為具有全域寫入權限目錄之擁有群組
+$(find / -xdev -type d -perm -0002 -gid +999 -print)
+====== FCB建議設定值 ======
+# root或其他系統群組
+====== FCB設定方法值 ======
+chgrp root (目錄名稱)
+=========================
+EOF
 else
-    echo '65 掃描根目錄, 檢查ok' >> ${FCB_SUCCESS}
+    echo 'OK: 65 檢查所有具有全域寫入權限目錄之擁有群組皆為root或其他系統群組' >> ${FCB_SUCCESS}
 fi
 
 echo '66 系統命令檔案權限'
 # 找出/的所有具有全域寫入權限目錄之擁有群組
 files=$(find -L /bin /sbin /usr/bin /usr/sbin /usr/local/bin /usr/local/sbin -perm /0022 -exec ls -la {} \;)
 # 檢查/的具有全域寫入權限目錄之擁有群組
-if [ -n "$files" ]; then
-    echo '66 以下為系統命令檔案, 請針對找到的系統命令檔案設定755或更低權限' >> ${FCB_FIX}
-    echo '語法參考 chmod (權限設定) (系統檔案名稱)' >> ${FCB_FIX}
-    echo "$files" >> ${FCB_FIX}
-    echo '========== END ==========' >> ${FCB_FIX}
+if [ -n "${files}" ]; then
+    cat <<EOF >> ${FCB_FIX}
+
+FIX: 66 系統命令檔案權限
+====== 不符合FCB規範 ======
+以下為系統命令檔案
+${files}
+====== FCB建議設定值 ======
+# 755或更低權限
+====== FCB設定方法值 ======
+chmod 755 (系統命令檔案名稱)
+=========================
+EOF
 else
-    echo '66 已掃描/bin /sbin /usr/bin /usr/sbin /usr/local/bin /usr/local/sbin, 檢查ok' >> ${FCB_SUCCESS}
+    echo 'OK: 66 系統命令檔案權限' >> ${FCB_SUCCESS}
 fi
 
 echo '67 系統命令檔案擁有者'
 files=$(find -L /bin /sbin /usr/bin /usr/sbin /usr/local/bin /usr/local/sbin ! -user root -exec ls -la {} \;)
-if [ -n "$files" ]; then
-    echo '67 以下為「系統命令檔案」, 請針對找到的系統命令檔案設定「擁有者為root」' >> ${FCB_FIX}
-    echo '語法參考 chown (權限擁有者) (系統檔案名稱)' >> ${FCB_FIX}
-    echo "$files" >> ${FCB_FIX}
-    echo '========== END ==========' >> ${FCB_FIX}
+if [ -n "${files}" ]; then
+    cat <<EOF >> ${FCB_FIX}
+
+FIX: 67 系統命令檔案擁有者
+====== 不符合FCB規範 ======
+以下為「系統命令檔案」
+${files}
+====== FCB建議設定值 ======
+# # 請針對找到的系統命令檔案設定「擁有者為root」
+====== FCB設定方法值 ======
+chown root (系統命令檔案名稱)
+=========================
+EOF
 else
-    echo '67 已掃描/bin /sbin /usr/bin /usr/sbin /usr/local/bin /usr/local/sbin, 檢查ok' >> ${FCB_SUCCESS}
+    echo 'OK: 67 系統命令檔案擁有者' >> ${FCB_SUCCESS}
 fi
 
 echo '68 系統命令檔案擁有群組'
 files=$(find -L /bin /sbin /usr/bin /usr/sbin /usr/local/bin /usr/local/sbin ! -user root -exec ls -la {} \;)
-if [ -n "$files" ]; then
-    echo '68 以下為「系統命令檔案」, 請針對找到的系統命令檔案設定「群組擁有者為root」' >> ${FCB_FIX}
-    echo '語法參考 chown (權限群組) (系統檔案名稱)' >> ${FCB_FIX}
-    echo "$files" >> ${FCB_FIX}
-    echo '========== END ==========' >> ${FCB_FIX}
+if [ -n "${files}" ]; then
+    cat <<EOF >> ${FCB_FIX}
+
+FIX: 68 系統命令檔案擁有群組
+====== 不符合FCB規範 ======
+以下為「系統命令檔案」
+${files}
+====== FCB建議設定值 ======
+# 請針對找到的系統命令檔案設定「群組擁有者為root」
+====== FCB設定方法值 ======
+chgrp root (系統命令檔案名稱)
+=========================
+EOF
 else
-    echo '68 已掃描/bin /sbin /usr/bin /usr/sbin /usr/local/bin /usr/local/sbin, 檢查ok' >> ${FCB_SUCCESS}
+    echo 'OK: 68 系統命令檔案擁有群組' >> ${FCB_SUCCESS}
 fi
 
 echo '69 程式庫檔案權限'
-files=$(find -L /lib /lib64 /usr/lib64 -perm /0022 -type f -exec ls -al {} \;)
-if [ -n "$files" ]; then
-    echo '69 以下為「程式庫檔案」, 請針對找到的程式庫檔案設定「權限更改為755或更低權限」' >> ${FCB_FIX}
-    echo '語法參考 chmod (檔案權限) (程式庫檔案)' >> ${FCB_FIX}
-    echo "$files" >> ${FCB_FIX}
-    echo '========== END ==========' >> ${FCB_FIX}
+files="$(find -L /lib /lib64 /usr/lib64 -perm /0022 -type f -exec ls -al {} \;)"
+if [ -n "${files}" ]; then
+    cat <<EOF >> ${FCB_FIX}
+
+FIX: 69 程式庫檔案權限
+====== 不符合FCB規範 ======
+以下為「程式庫檔案」
+${files}
+====== FCB建議設定值 ======
+# 請針對找到的程式庫檔案設定「權限更改為755或更低權限」
+====== FCB設定方法值 ======
+chmod 755 (程式庫檔案名稱)
+=========================
+EOF
 else
-    echo '69 已掃描/lib /lib64 /usr/lib64, 檢查ok' >> ${FCB_SUCCESS}
+    echo 'OK: 69 程式庫檔案權限' >> ${FCB_SUCCESS}
 fi
 
 echo '70 程式庫檔案擁有者'
 files=$(find -L /lib /lib64 /usr/lib64 ! -user root -exec ls -al {} \;)
 if [ -n "$files" ]; then
-    echo '70 以下為「程式庫檔案」, 請針對找到的程式庫檔案設定「擁有者更改為root」' >> ${FCB_FIX}
-    echo '語法參考 chown root (程式庫檔案)' >> ${FCB_FIX}
-    echo "$files" >> ${FCB_FIX}
-    echo '========== END ==========' >> ${FCB_FIX}
+    cat <<EOF >> ${FCB_FIX}
+
+FIX: 70 程式庫檔案擁有者
+====== 不符合FCB規範 ======
+以下為「程式庫檔案」
+${files}
+====== FCB建議設定值 ======
+# 請針對找到的程式庫檔案設定「擁有者更改為root」
+====== FCB設定方法值 ======
+chown root (程式庫檔案名稱)
+=========================
+EOF
 else
-    echo '70 已掃描/lib /lib64 /usr/lib64, 檢查ok' >> ${FCB_SUCCESS}
+    echo 'OK: 70 程式庫檔案擁有者' >> ${FCB_SUCCESS}
 fi
 
-echo '71 程式庫檔案擁有權組'
+echo '71 程式庫檔案擁有群組'
 files=$(find -L /lib /lib64 /usr/lib64 ! -group root -exec ls -al {} \;)
 if [ -n "$files" ]; then
-    echo '71 以下為「程式庫檔案」, 請針對找到的程式庫檔案設定「擁有群組更改為root」' >> ${FCB_FIX}
-    echo '語法參考 chgrp root (程式庫檔案)' >> ${FCB_FIX}
-    echo "$files" >> ${FCB_FIX}
-    echo '========== END ==========' >> ${FCB_FIX}
+    cat <<EOF >> ${FCB_FIX}
+
+FIX: 71 程式庫檔案擁有群組
+====== 不符合FCB規範 ======
+以下為「程式庫檔案」
+${files}
+====== FCB建議設定值 ======
+# 請針對找到的程式庫檔案設定「擁有群組更改為root」
+====== FCB設定方法值 ======
+chgrp root (程式庫檔案名稱)
+=========================
+EOF
 else
-    echo '71 已掃描/lib /lib64 /usr/lib64, 檢查ok' >> ${FCB_SUCCESS}
+    echo 'OK: 71 程式庫檔案擁有群組' >> ${FCB_SUCCESS}
 fi
 
 echo '72 帳號不使用空白密碼'
 emptyfiles=$(awk -F: '($2 == "" ) { print $1 " does not have a password "}' /etc/shadow)
 if [ -n "$emptyfiles" ]; then
-    echo '72 以下帳號必須具有密碼或鎖定' >> ${FCB_FIX}
-    echo "$emptyfiles" >> ${FCB_FIX}
-    echo '========== END ==========' >> ${FCB_FIX}
+    cat <<EOF >> ${FCB_FIX}
+
+FIX: 72 帳號不使用空白密碼
+====== 不符合FCB規範 ======
+以下帳號尚未設定密碼或鎖定
+${emptyfiles}
+====== FCB建議設定值 ======
+# 帳號必須具有通行碼或被鎖定
+====== FCB設定方法值 ======
+# 設定帳號通行碼
+passwd (帳號名稱)
+# 或是
+# 鎖定帳號
+passwd -l (帳號名稱)
+=========================
+EOF
 else
-    echo '72 帳號已具有密碼或鎖定' >> ${FCB_SUCCESS}
+    echo 'OK: 72 帳號已具有密碼或鎖定' >> ${FCB_SUCCESS}
 fi
 
 echo '73 root帳號的路徑變數'
