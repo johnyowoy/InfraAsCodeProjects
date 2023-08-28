@@ -466,10 +466,6 @@ echo '62 檢查所有檔案與目錄之「擁有者」'
 # 找出/的所有檔案為不合法使用者
 # 檢查/的所有檔案是否為合法使用者
 if [ -n "$(find / -xdev -nouser)" ]; then
-    echo '62 以下檔案為不合法使用者，請針對找到的檔案與目錄指定合法使用者或移除' >> ${FCB_FIX}
-    echo '語法參考 chown (使用者) (檔案名稱或目錄名稱) 或是 rm (檔案名稱或目錄名稱)' >> ${FCB_FIX}
-    echo "$files" >> ${FCB_FIX}
-    echo '========== END ==========' >> ${FCB_FIX}
     cat <<EOF >> ${FCB_FIX}
 
 FIX: 62 檢查所有檔案與目錄之「擁有者」
@@ -700,14 +696,14 @@ if [ "$RPCV2" ]; then
     echo "${RPCV2}" >> ${FCB_FIX}
     echo '========== END ==========' >> ${FCB_FIX}
 else
-    echo '73 root PATH 檢查OK' >> ${FCB_SUCCESS}
+    echo 'OK: 73 root PATH' >> ${FCB_SUCCESS}
 fi
 if [ "$RPCV3" ]; then
     echo '73 root帳號 PATH有異常, 請手動修正' >> ${FCB_FIX}
     echo "${RPCV3}" >> ${FCB_FIX}
     echo '========== END ==========' >> ${FCB_FIX}
 else
-    echo '73 root PATH 檢查OK' >> ${FCB_SUCCESS}
+    echo 'OK: 73 root PATH' >> ${FCB_SUCCESS}
 fi
 
 echo '74 root帳號路徑變數不包含world-writable或group-writable目錄'
@@ -721,20 +717,26 @@ for x in $(echo "$RPCV" | tr ":" " "); do
     fi
 done
 
-echo << EOF
-75 passwd不允許存在「+」符號
-76 shadow不允許存在「+」符號
-77 group不允許存在「+」符號
-EOF
+echo '75 passwd不允許存在「+」符號'
+echo '76 shadow不允許存在「+」符號'
+echo '77 group不允許存在「+」符號'
 index=1
 while IFS= read -r line; do
     auditlog[$index]="$line"
     if grep '^\+' ${auditlog[$index]} >/dev/null; then
-        echo "${auditlog[$index]} 字首存在「+」符號，請移除" >> ${FCB_FIX}
-        grep -n '^\+' ${auditlog[$index]} >> ${FCB_FIX}
-        echo '========== END ==========' >> ${FCB_FIX}
+        cat <<EOF >> ${FCB_FIX}
+
+FIX: ${auditlog[$index]}不允許存在「+」符號
+====== 不符合FCB規範 ======
+$(grep -n '^\+' ${auditlog[$index]})
+====== FCB建議設定值 ======
+# 禁止存在「+」符號
+====== FCB設定方法值 ======
+# 編輯${auditlog[$index]}檔案，將行首為「+」符號之列移除
+=========================
+EOF
     else
-        echo "${auditlog[${index}]}不存在「+」符號, 檢查OK" >> ${FCB_SUCCESS}
+        echo "OK: ${auditlog[${index}]}不存在「+」符號" >> ${FCB_SUCCESS}
     fi
     index=$((index + 1))
 done <<EOF
@@ -746,63 +748,164 @@ EOF
 echo '78 UID=0之帳號'
 emptyfiles=$(awk -F: '($3 == 0 ) { print $1}' /etc/passwd | grep -v root)
 if [ -n "$emptyfiles" ]; then
-    echo '78 以下帳號UID=0, 是具有系統管理權限' >> ${FCB_FIX}
-    echo "$emptyfiles" >> ${FCB_FIX}
-    echo '========== END ==========' >> ${FCB_FIX}
+    cat <<EOF >> ${FCB_FIX}
+
+FIX: 78 UID=0之帳號
+====== 不符合FCB規範 ======
+# 78 以下帳號UID=0, 是具有系統管理權限
+$(emptyfiles)
+====== FCB建議設定值 ======
+# 僅root帳號之UID為0
+====== FCB設定方法值 ======
+# 列出UID=0之帳號：
+awk -F: '($3 == 0) { print $1 }' /etc/passwd
+# 若存在非root帳號，則執行以下指令，移除帳號或重新設定UID：
+userdel (帳號名稱)
+或
+usermod -u (UID) (帳號名稱)
+=========================
+EOF
 else
-    echo '78 無其他帳號UID=0' >> ${FCB_SUCCESS}
+    echo 'OK: 78 無其他帳號UID=0' >> ${FCB_SUCCESS}
 fi
 
 # 79 使用者家目錄權限
 # 取得所有使用者清單，nologin /bin/false, root不用顯示
+echo "79 使用者家目錄權限"
 getent passwd | cut -d ':' -f 1,6,7 | grep -v 'halt\|sync\|shutdown\|nologin\|root\|\/bin\/false' | cut -d ':' -f 2 | while read line; do
     homepath=$(echo $line | cut -d: -f1)
-    if stat -c "%a" $homepath | grep 700 >/dev/null; then
-        echo "79 使用者家目錄($homepath)權限檢查OK" >> ${FCB_SUCCESS}
+    if stat -c "%a" $homepath | grep [1-7][0][0] >/dev/null; then
+        echo "OK: 79 使用者家目錄($homepath)權限" >> ${FCB_SUCCESS}
     else
-        echo "79 使用者家目錄($homepath), 不符合FCB規範" >> ${FCB_FIX}
-        echo "79 群組不具寫入(g-w)權限, 其他使用者不具讀取、寫入及執行(o-rwx)權限" >> ${FCB_FIX}
+        cat <<EOF >> ${FCB_FIX}
+
+FIX: 79 使用者家目錄權限
+====== 不符合FCB規範 ======
+$(stat -c "檔案名稱 %n 檔案權限 %a" $homepath)
+====== FCB建議設定值 ======
+# 使用者家目錄應限制群組不具寫入(g-w)權限，其他使用者不具讀取、寫入及執行(o-rwx)權限，避免遭未經授權存取與竊取資料
+# 使用者家目錄權限設定700或更低權限
+====== FCB設定方法值 ======
+# 使用者家目錄權限設定700
+chmod 700 (使用者家目錄)
+=========================
+EOF
     fi
 done
 
-# 80 使用者家目錄擁有者
+# 80 81 使用者家目錄擁有者
 # 82 使用者家目錄之「.」檔案權限
 # 83 使用者家目錄之「.forward」檔案權限
 # 84 使用者家目錄之「.netrc」檔案權限
 # 85 使用者家目錄之「.rhosts」檔案權限
+echo "80 81 使用者家目錄擁有者"
+echo "82 使用者家目錄之「.」檔案權限"
+echo "83 使用者家目錄之「.forward」檔案權限"
+echo "84 使用者家目錄之「.netrc」檔案權限"
+echo "85 使用者家目錄之「.rhosts」檔案權限"
 getent passwd | grep -v 'halt\|sync\|shutdown\|nologin\|root\|\/bin\/false' | while read line; do
     user=$(echo $line | cut -d: -f1)
     homepath=$(sh -c "echo ~$user")
-    # 80 使用者家目錄擁有者
-    chown $user:$user $homepath
+    # 80 81 使用者家目錄擁有者
+    if [[ $user != $(stat -c "%U" $homepath) || $user != $(stat -c "%G" $homepath) ]] >/dev/null; then
+        cat <<EOF >> ${FCB_FIX}
+
+FIX: 80 81 使用者家目錄擁有者
+====== 不符合FCB規範 ======
+$(stat -c "檔案名稱: %n 檔案擁有者: %U:%G" $homepath)
+====== FCB建議設定值 ======
+# 家目錄使用者擁有
+====== FCB設定方法值 ======
+chown $user:$user $homepath
+=========================
+EOF
+    else
+        echo "OK: 80 81 使用者家目錄擁有者($homepath)" >> ${FCB_SUCCESS}
+    fi
     # 82 使用者家目錄之「.」檔案權限
     cd $homepath
-    chmod 700 .
-    # 83 使用者家目錄之「.forward」檔案權限
+    if stat -c "%a" . | grep 550  >/dev/null; then
+        echo "OK: 82 使用者家目錄之「.」檔案權限" >> ${FCB_SUCCESS}
+    else
+        cat <<EOF >> ${FCB_FIX}
+
+FIX: 82 使用者家目錄之「.」檔案權限
+====== 不符合FCB規範 ======
+$(stat -c "資料夾名稱: %n 資料夾權限: %a" .)
+====== FCB建議設定值 ======
+# go-w或是更低權限
+====== FCB設定方法值 ======
+chmod 550 $homepath/.
+=========================
+EOF
+    fi
+    # 83 使用者家目錄之「.forward」檔案
     if [ -f ".forward" ]; then
-        echo "$user 家目錄存在.forward, 請移除" >> ${FCB_FIX}
+        cat <<EOF >> ${FCB_FIX}
+
+FIX: 83 使用者家目錄之「.forward」檔案
+====== 不符合FCB規範 ======
+# $user 家目錄存在.forward
+====== FCB建議設定值 ======
+# 移除.forward檔案
+====== FCB設定方法值 ======
+rm $homepath/.forward 
+=========================
+EOF
     else
-        echo "$user home, file .forward not exists." >> ${FCB_SUCCESS}
+        echo "OK: 83 $user home, file .forward not exists." >> ${FCB_SUCCESS}
     fi
-    # 84 使用者家目錄之「.netrc」檔案權限
+    # 84 使用者家目錄之「.netrc」檔案
     if [ -f ".netrc" ]; then
-        echo "$user 家目錄存在.netrc, 請移除" >> ${FCB_FIX}
+        cat <<EOF >> ${FCB_FIX}
+
+FIX: 84 使用者家目錄之「.netrc」檔案
+====== 不符合FCB規範 ======
+$homepath存在.netrc檔案
+====== FCB建議設定值 ======
+# 移除.netrc檔案
+====== FCB設定方法值 ======
+rm $homepath/.netrc 
+=========================
+EOF
     else
-        echo "$user home, file .netrc not exists." >> ${FCB_SUCCESS}
+        echo "OK: 84 $user home, file .netrc not exists." >> ${FCB_SUCCESS}
     fi
-    # 85 使用者家目錄之「.rhosts」檔案權限
+    # 85 使用者家目錄之「.rhosts」檔案
     if [ -f ".rhosts" ]; then
-        echo "$user 家目錄存在.rhosts, 請移除" >> ${FCB_FIX}
+        cat <<EOF >> ${FCB_FIX}
+
+FIX: 85 使用者家目錄之「.rhosts」檔案
+====== 不符合FCB規範 ======
+$homepath存在.rhosts檔案
+====== FCB建議設定值 ======
+# 移除.rhosts檔案
+====== FCB設定方法值 ======
+rm $homepath/.rhosts
+=========================
+EOF
     else
-        echo "$user home, file .rhosts not exists." >> ${FCB_SUCCESS}
+        echo "OK: 85 $user home, file .rhosts not exists." >> ${FCB_SUCCESS}
     fi
 done
 
 echo '86 檢查/etc/passwd檔案設定的群組'
-for i in $(cut -s -d: -f4 /etc/passwd | sort -u ); do
+for i in $(cut -s -d: -f4 /etc/passwd | sort -u); do
     grep -q -P "^.*?:[^:]*:$i:" /etc/group
     if [ $? -ne 0 ]; then
-        echo "Group $i is referenced by /etc/passwd but does not exist in /etc/group" >> ${FCB_FIX}
+        cat <<EOF >> ${FCB_FIX}
+
+FIX: 86 檢查/etc/passwd檔案設定的群組
+====== 不符合FCB規範 ======
+$(echo "Group $i is referenced by /etc/passwd but does not exist in /etc/group")
+====== FCB建議設定值 ======
+# /etc/passwd檔案中帳號的群組皆須存在於/etc/group檔案中
+====== FCB設定方法值 ======
+
+=========================
+EOF
+    else
+        echo "OK: 86 檢查/etc/passwd檔案設定的群組" >> ${FCB_SUCCESS}
     fi
 done
 
@@ -812,35 +915,86 @@ cut -f3 -d":" /etc/passwd | sort -n | uniq -c | while read x ; do
     set - $x
     if [ $1 -gt 1 ]; then
         users=$(awk -F: '($3 == n) { print $1 }' n=$2 /etc/passwd | xargs)
-        echo "87 有相同UID, Duplicate UID ($2): $users" >> ${FCB_FIX}
-        echo "語法指令參考 usermod -u (UID) (帳號名稱)" >> ${FCB_FIX}
-        echo '========== END ==========' >> ${FCB_FIX}
+        cat <<EOF >> ${FCB_FIX}
+
+FIX: 87 唯一的UID
+====== 不符合FCB規範 ======
+$(echo "有相同的UID, Duplicate UID ($2): $users")
+====== FCB建議設定值 ======
+# 為每個帳號設定唯一的UID
+====== FCB設定方法值 ======
+# 若有不同帳號使用相同的UID，則編輯/etc/passwd檔案，或執行以下指令，為帳號設定唯一的UID：
+usermod -u (UID) (帳號名稱)
+=========================
+EOF
+    else
+        echo "OK: 87 唯一的UID" >> ${FCB_SUCCESS}
     fi
 done
 
 echo '88 唯一的GID'
 cut -d: -f3 /etc/group | sort | uniq -d | while read x ; do
-echo "88 有相同的GID, Duplicate GID ($x) in /etc/group" >> ${FCB_FIX}
-echo "語法指令參考 groupmod -g (GID) (群組名稱)"
-echo '========== END ==========' >> ${FCB_FIX}
+    cat <<EOF >> ${FCB_FIX}
+
+FIX: 88 唯一的GID
+====== 不符合FCB規範 ======
+$(echo "88 有相同的GID, Duplicate GID ($x) in /etc/group")
+====== FCB建議設定值 ======
+# 為每個群組設定唯一的GID
+====== FCB設定方法值 ======
+# 若有不同群組使用相同GID，則編輯/etc/group檔案，或執行以下指令，為群組設定唯一的GID：
+groupmod -g (GID) (群組名稱)
+=========================
+EOF
 done
 
 echo '89 唯一的使用者帳號名稱'
 cut -d: -f1 /etc/passwd | sort | uniq -d | while read x ; do
-echo "89 偵測到相同使用者帳號名稱, Duplicate login name ${x} in /etc/passwd" >> ${FCB_FIX}
-echo '========== END ==========' >> ${FCB_FIX}
+    cat <<EOF >> ${FCB_FIX}
+
+FIX: 89 唯一的使用者帳號名稱
+====== 不符合FCB規範 ======
+$(echo "89 偵測到相同使用者帳號名稱, Duplicate login name ${x} in /etc/passwd")
+====== FCB建議設定值 ======
+# 為每個使用者帳號設定唯一的名稱
+====== FCB設定方法值 ======
+# 編輯/etc/passwd檔案，為帳號設定唯一不重複的帳號名稱
+=========================
+EOF
 done
 
 echo '90 唯一的群組名稱'
 cut -d: -f1 /etc/group | sort | uniq -d | while read x ; do
-echo "90 偵測到相同群組名稱, Duplicate group name ${x} in /etc/group" >> ${FCB_FIX}
-echo '========== END ==========' >> ${FCB_FIX}
+    cat <<EOF >> ${FCB_FIX}
+
+FIX: 90 唯一的群組名稱
+====== 不符合FCB規範 ======
+$(echo "90 偵測到相同群組名稱, Duplicate group name ${x} in /etc/group")
+====== FCB建議設定值 ======
+# 為每個群組設定唯一的群組名稱
+====== FCB設定方法值 ======
+# 編輯/etc/group檔案，為每個群組設定唯一的群組名稱
+=========================
+EOF
 done
 
 echo '91 shadow群組成員'
 if awk -F: '($1=="shadow")' /etc/group >/dev/null; then
-    echo '91 shadow不能包含任何使用者 請移除此使用者' >> ${FCB_FIX}
-    awk -F: '($1=="shadow")' /etc/group >> ${FCB_FIX}
+    cat <<EOF >> ${FCB_FIX}
+
+FIX: 91 shadow群組成員
+====== 不符合FCB規範 ======
+$(awk -F: '($1=="shadow")' /etc/group)
+====== FCB建議設定值 ======
+# shadow群組不包含任何使用者
+====== FCB設定方法值 ======
+# 如shadow群組有使用者帳號，請針對每個帳號執行下列步驟：
+# (1) 執行以下指令，從shadow群組移除使用者帳號：
+sed -ri 's/(^shadow:[^:]*:[^:]*:)([^:]+$)/\1/' /etc/group
+# (2) 執行以下指令，將使用者帳號之主要群組，從shadow修改為預設群組：
+usermod -g (預設群組名稱) (帳號名稱)
+=========================
+EOF
 else
-    echo '91 shadow群組成員無使用者 檢查ok' >> ${FCB_SUCCESS}
+    echo 'OK: 91 shadow群組成員' >> ${FCB_SUCCESS}
 fi
