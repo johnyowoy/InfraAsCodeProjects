@@ -15,25 +15,35 @@ echo "TASK [類別 系統設定與維護] **************************************
 echo "TASK [Print Message] ****************************************" >> ${FCB_SUCCESS}
 echo "TASK [Print Message] ****************************************" >> ${FCB_FIX}
 
-echo "32 GPG簽章驗證"
+echo "32 GPG簽章驗證(yum)"
 if grep -q "gpgcheck=1" /etc/yum.conf; then
     echo "OK: 32 GPG簽章驗證" >> ${FCB_SUCCESS}
 else
-    echo "FIX: 32 GPG簽章驗證!" >> ${FCB_FIX}
-    echo "====== 不符合FCB規範 ======" >> ${FCB_FIX}
-    cat /etc/yum.conf | grep gpgcheck=.* >> ${FCB_FIX}
-    echo "====== FCB設定建議值 ======" >> ${FCB_FIX}
-    echo "gpgcheck=1" >> ${FCB_FIX}
+    cat << EOF >> ${FCB_FIX}
+FIX: 32 GPG簽章驗證(yum)
+====== 不符合FCB規範 ======
+$(cat /etc/yum.conf | grep gpgcheck=.*)
+====== FCB設定建議值 ======
+gpgcheck=1
+====== FCB設定方法值 ======
+# /etc/yum.conf檔案，修改以下內容：
+gpgcheck=1
+EOF
 fi
 if [ -f "/etc/dnf.conf" ]; then
     if grep -q "gpgcheck=1" /etc/dnf/dnf.conf; then
         echo "OK: 32 GPG簽章驗證 (dnf)!" >> ${FCB_SUCCESS}
     else
-        echo "FIX: 32 GPG簽章驗證 (dnf)" >> ${FCB_FIX}
-        echo "====== 不符合FCB規範 ======" >> ${FCB_FIX}
-        cat /etc/dnf.conf | grep gpgcheck=.* >> ${FCB_FIX}
-        echo "====== FCB建議設定值 ======" >> ${FCB_FIX}
-        echo "gpgcheck=1" >> ${FCB_FIX}
+        cat << EOF >> ${FCB_FIX}
+FIX: 32 GPG簽章驗證 (dnf)
+====== 不符合FCB規範 ======
+$(cat /etc/dnf.conf | grep gpgcheck=.*)
+====== FCB建議設定值 ======
+gpgcheck=1
+====== FCB設定方法值 ======
+# /etc/dnf.conf檔案，修改以下內容：
+gpgcheck=1
+EOF
     fi
 else
     echo "/etc/dnf.conf file not found, no set!"
@@ -101,12 +111,14 @@ if grep ^Defaults.*logfile=\"\/var\/log\/sudo.log\" /etc/sudoers >/dev/null; the
         echo "touch /var/log/sudo.log" >> ${FCB_FIX}
     fi
 else
-    echo "FIX: 35 sudo自訂義日誌檔案系統" >> ${FCB_FIX}
-    echo "====== 不符合FCB規範 ======" >> ${FCB_FIX}
-    echo "檢查/etc/sudoers檔案內容尚未設定 Defaults logfile=/var/log/sudo.log" >> ${FCB_FIX}
-    echo "====== FCB建議設定值 ======" >> ${FCB_FIX}
-    echo "/etc/sudoers檔案新增以下內容：" >> ${FCB_FIX}
-    echo "Defaults logfile=\"/var/log/sudo.log\"" >> ${FCB_FIX}
+    cat << EOF >> ${FCB_FIX}
+FIX: 35 sudo自訂義日誌檔案系統
+====== 不符合FCB規範 ======
+檢查/etc/sudoers檔案內容尚未設定 Defaults logfile=/var/log/sudo.log
+====== FCB建議設定值 ======
+/etc/sudoers檔案新增以下內容：
+Defaults logfile="/var/log/sudo.log"
+EOF
 fi
 
 # 36 安裝AIDE套件

@@ -21,18 +21,24 @@
 # Number
 # 08~28 獨立分割磁區或邏輯磁區，fstab nodev 啟用
 # ==========================================
-# 78~79
-# 73，74
-# 80~91
-# 96
+# 系統設定與維護
+# 37 定期檢查檔案系統完整性 aide crontab 時間討論
+# 88
+# 91 shadow 需要討論，技術問題
+# 93 chrony校時設定
+# 94 rsyncd無法使用systemctl
+# 96 snmp需要討論，改用snmpv3
 # 108
+# 119 不回應ICMP廣播請求
 # 158
+# 161 sudo logfile
 # 185 186 187 188
 # 207 208 221
 # 223 已經預設 ENCRYPT_METHOD SHA512
 # 230
-# SSH 5 限制SSH存取 啟用
-# SSH 16 PermitRootLogin參數討論, 預設no 
+# 266
+# 277
+# SSH 5
 
 # 確認是否以root身分執行
 if [[ $EUID -ne 0 ]]; then
@@ -42,15 +48,15 @@ fi
 echo '現在您正以root權限執行腳本...'
 
 # Log異常檢視
-# 符合FCB Log
-FCB_LOG_SUCCESS='/root/FCB_LOG_SUCCESS.txt'
-# 錯誤需修正檢視Log
-FCB_LOG_ERROR='/root/FCB_LOG_ERROR.txt'
+# 符合FCB規範
+FCB_SUCCESS="/root/FCB_DOCS/TCBFCB_SuccessCheck-$(date '+%Y%m%d').log"
+# 需修正檢視
+FCB_FIX="/root/FCB_DOCS/TCBFCB_FixCheck-$(date '+%Y%m%d').log"
 # 執行異常錯誤
-FCB_LOG_FAILED='/root/FCB_LOG_FAILED.txt'
-touch ${FCB_LOG_SUCCESS}
-touch ${FCB_LOG_ERROR}
-touch ${FCB_LOG_FAILED}
+FCB_ERROR="/root/FCB_DOCS/TCBFCB_ErrorCheck-$(date '+%Y%m%d').log"
+# 顯示日期時間
+echo "$(date '+%Y/%m/%d %H:%M:%S')" >> ${FCB_SUCCESS}
+echo "$(date '+%Y/%m/%d %H:%M:%S')" >> ${FCB_FIX}
 
 # SELinux
 echo "=============================="

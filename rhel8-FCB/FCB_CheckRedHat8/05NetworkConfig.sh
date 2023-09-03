@@ -1,96 +1,288 @@
 # 網路設定
-function ConfiguringNetworks () {
-    sysctl_conf='/etc/sysctl.conf'
-    echo "108 停用IP轉送功能"
-    sysctl -w net.ipv4.ip_forward=0 >> ${sysctl_conf}
-    sysctl -w net.ipv6.conf.all.forwarding=0 >> ${sysctl_conf}
+# 符合FCB規範
+FCB_SUCCESS="/root/FCB_DOCS/TCBFCB_SuccessCheck-$(date '+%Y%m%d').log"
+# 需修正檢視
+FCB_FIX="/root/FCB_DOCS/TCBFCB_FixCheck-$(date '+%Y%m%d').log"
+# 執行異常錯誤
+FCB_ERROR="/root/FCB_DOCS/TCBFCB_ErrorCheck-$(date '+%Y%m%d').log"
+# 顯示日期時間
+echo "$(date '+%Y/%m/%d %H:%M:%S')" >> ${FCB_SUCCESS}
+echo "$(date '+%Y/%m/%d %H:%M:%S')" >> ${FCB_FIX}
 
-    echo "109 所有網路介面禁止傳送ICMP重新導入封包"
-    sysctl -w net.ipv4.conf.all.send_redirects=0 >> ${sysctl_conf}
+echo "TASK [類別 網路設定] ****************************************" >> ${FCB_SUCCESS}
+echo "TASK [類別 網路設定] ****************************************" >> ${FCB_FIX}
 
-    echo "110 預設網路介面禁止傳送ICMP重新導向封包"
-    sysctl -w net.ipv4.conf.default.send_redirects=0 >> ${sysctl_conf}
+echo "TASK [Print Message] ****************************************" >> ${FCB_SUCCESS}
+echo "TASK [Print Message] ****************************************" >> ${FCB_FIX}
 
-    echo "111 所有網路介面阻擋來源路由封包"
-    sysctl -w net.ipv4.conf.all.accept_source_route=0 >> ${sysctl_conf}
-    sysctl -w net.ipv6.conf.all.accept_source_route=0 >> ${sysctl_conf}
-
-    echo "112 預設網路介面阻擋來源路由封包"
-    sysctl -w net.ipv4.conf.default.accept_source_route=0 >> ${sysctl_conf}
-    sysctl -w net.ipv6.conf.default.accept_source_route=0 >> ${sysctl_conf}
-
-    echo "113 所有網路介面阻擋ICMP重新導向封包"
-    sysctl -w net.ipv4.conf.all.accept_redirects=0 >> ${sysctl_conf}
-    sysctl -w net.ipv6.conf.all.accept_redirects=0 >> ${sysctl_conf}
-
-    echo "114 預設網路介面阻擋ICMP重新導向封包"
-    sysctl -w net.ipv4.conf.default.accept_redirects=0 >> ${sysctl_conf}
-    sysctl -w net.ipv6.conf.default.accept_redirects=0 >> ${sysctl_conf}
-
-    echo "115 所有網路介面阻擋安全之IMCP重新封包"
-    sysctl -w net.ipv4.conf.all.secure_redirects=0 >> ${sysctl_conf}
-
-    echo "116 預設網路介面阻擋安全之ICMP重新導向封包"
-    sysctl -w net.ipv4.conf.default.secure_redirects=0 >> ${sysctl_conf}
-
-    echo "117 所有網路介面紀錄可疑封包"
-    sysctl -w net.ipv4.conf.all.log_martians=1 >> ${sysctl_conf}
-
-    echo "118 預設網路介面紀錄可疑封包"
-    sysctl -w net.ipv4.conf.default.log_martians=1 >> ${sysctl_conf}
-
-    echo "119 不回應ICMP廣播要求"
-    sysctl -w net.ipv4.icmp_echo_ignore_broadcasts=1 >> ${sysctl_conf}
-
-    echo "120 忽略 造之ICMP錯誤訊息"
-    sysctl -w net.ipv4.icmp_ignore_bogus_error_responses=1 >> ${sysctl_conf}
-
-    echo "121 所有網路介面啟用逆向路徑過濾功能"
-    sysctl -w net.ipv4.conf.all.rp_filter=1 >> ${sysctl_conf}
-
-    echo "122 預設網路介面啟用逆向路徑過濾功能"
-    sysctl -w net.ipv4.conf.default.rp_filter=1 >> ${sysctl_conf}
-
-    echo "123 TCP SYN cookies"
-    sysctl -w net.ipv4.tcp_syncookies=1 >> ${sysctl_conf}
-
-    echo "124 所有網路介面阻擋IPv6路由器公告訊息"
-    sysctl -w net.ipv6.all.accept_ra=0 >> ${sysctl_conf}
-
-    echo "125 預設網路介面阻擋IPv6路由器公告訊息"
-    sysctl -w net.ipv6.conf.default.accept_ra=0 >> ${sysctl_conf}
-
-    sysctl -p ${sysctl_conf}
-
-    echo "126 停用DCCP協定"
-    touch /etc/modprobe.d/dccp.conf
-    sed -i '$a install dccp /bin/true' /etc/modprobe.d/dccp.conf
-    sed -i '$a blacklist dccp' /etc/modprobe.d/dccp.conf
-
-    echo "127 停用SCTP協定"
-    touch /etc/modprobe.d/sctp.conf
-    sed -i '$a install sctp /bin/true' /etc/modprobe.d/sctp.conf
-    sed -i '$a blacklist sctp' /etc/modprobe.d/sctp.conf
-
-    echo "128 停用RDS協定"
-    touch /etc/modprobe.d/rds.conf
-    sed -i '$a install rds /bin/true' /etc/modprobe.d/rds.conf
-    sed -i '$a blacklist rds' /etc/modprobe.d/rds.conf
-
-    echo "129 停用TIPC協定"
-    touch /etc/modprobe.d/tipc.conf
-    sed -i '$a install tipc /bin/true' /etc/modprobe.d/tipc.conf
-    sed -i '$a blacklist tipc' /etc/modprobe.d/tipc.conf
-
-    echo "130 停用無線網路介面"
-    nmcli radio all off
-
-    echo "131 停用網路介面混雜模式"
-    if ip link | grep -i promisc >/dev/null; then
-        echo "檢查OK"
+# 網路設定
+NetworkRulesPath='/etc/sysctl.d/tcb_fcbnetwork.conf'
+if [ -f "${NetworkRulesPath}" ]; then
+    echo "已建立tcb_fcbnetwork.conf檔案"
+else
+    touch ${NetworkRulesPath}
+fi
+index=1
+while IFS= read -r line; do
+    NetworkConfig[$index]="$line"
+    if grep "${NetworkConfig[${index}]}" ${NetworkRulesPath} >/dev/null; then
+        echo "OK: ${NetworkConfig[${index}]}" >> ${FCB_SUCCESS}
     else
-        echo "請使用指令"
-        echo "ip link set dev (網路介面裝置名稱) multicast off promisc off"
+        cat << EOF >> ${FCB_FIX}
+# FIX: 編輯${NetworkRulesPath}，新增以下內容:
+${NetworkConfig[${index}]}
+EOF
     fi
-}
-ConfiguringNetworks
+    index=$((index + 1))
+done <<EOF
+# 108 停用IP轉送功能
+net.ipv4.ip_forward = 0
+net.ipv6.conf.all.forwarding = 0
+# 109 所有網路介面禁止傳送ICMP重新導入封包
+net.ipv4.conf.all.send_redirects = 0
+# 110 預設網路介面禁止傳送ICMP重新導向封包
+net.ipv4.conf.default.send_redirects = 0
+# 111 所有網路介面阻擋來源路由封包
+net.ipv4.conf.all.accept_source_route = 0
+net.ipv6.conf.all.accept_source_route = 0
+# 112 預設網路介面阻擋來源路由封包
+net.ipv4.conf.default.accept_source_route = 0
+net.ipv6.conf.default.accept_source_route = 0
+# 113 所有網路介面阻擋ICMP重新導向封包
+net.ipv4.conf.all.accept_redirects = 0
+net.ipv6.conf.all.accept_redirects = 0
+# 114 預設網路介面阻擋ICMP重新導向封包
+net.ipv4.conf.default.accept_redirects = 0
+net.ipv6.conf.default.accept_redirects = 0
+# 115 所有網路介面阻擋安全之IMCP重新封包
+net.ipv4.conf.all.secure_redirects = 0
+# 116 預設網路介面阻擋安全之ICMP重新導向封包
+net.ipv4.conf.default.secure_redirects = 0
+# 117 所有網路介面紀錄可疑封包
+net.ipv4.conf.all.log_martians = 1
+# 118 預設網路介面紀錄可疑封包
+net.ipv4.conf.default.log_martians = 1
+# 119 不回應ICMP廣播要求
+net.ipv4.icmp_echo_ignore_broadcasts = 1
+# 120 忽略 造之ICMP錯誤訊息
+net.ipv4.icmp_ignore_bogus_error_responses = 1
+# 121 所有網路介面啟用逆向路徑過濾功能
+net.ipv4.conf.all.rp_filter = 1
+# 122 預設網路介面啟用逆向路徑過濾功能
+net.ipv4.conf.default.rp_filter = 1
+# 123 TCP SYN cookies
+net.ipv4.tcp_syncookies = 1
+# 124 所有網路介面阻擋IPv6路由器公告訊息
+net.ipv6.all.accept_ra = 0
+# 125 預設網路介面阻擋IPv6路由器公告訊息
+net.ipv6.conf.default.accept_ra = 0
+EOF
+
+echo "126 停用DCCP協定"
+modprobepath="/etc/modprobe.d/dccp.conf"
+if [ -f "${modprobepath}" ]; then
+    if grep install.*dccp.*\/bin\/true ${modprobepath} /dev/null && grep blacklist.*dccp ${modprobepath} /dev/null; then
+        echo "OK: 126 停用DCCP協定" >> ${FCB_SUCCESS}
+    else
+        cat <<EOF >> ${FCB_FIX}
+
+FIX: 126 停用DCCP協定
+====== 不符合FCB規範 ======
+${modprobepath} 內容尚未設定
+====== FCB建議設定值 ======
+# 停用
+====== FCB設定方法值 ======
+# 開啟終端機，執行vim指令，在/etc/modprobe.d目錄，新增或編輯「dccp.conf」檔案，範例如下：
+# vim ${modprobepath}
+並在檔案中加入以下內容：
+install dccp /bin/true
+blacklist dccp
+# 完成後，請重新開機
+==========================
+EOF
+    fi
+else
+    touch ${modprobepath}
+    cat <<EOF >> ${FCB_FIX}
+
+FIX: 126 停用DCCP協定
+====== 不符合FCB規範 ======
+${modprobepath} 內容尚未設定
+====== FCB建議設定值 ======
+# 停用
+====== FCB設定方法值 ======
+# 開啟終端機，執行vim指令，在/etc/modprobe.d目錄，新增或編輯「dccp.conf」檔案，範例如下：
+# vim ${modprobepath}
+並在檔案中加入以下內容：
+install dccp /bin/true
+blacklist dccp
+# 完成後，請重新開機
+==========================
+EOF
+fi
+
+echo "127 停用SCTP協定"
+modprobepath="/etc/modprobe.d/sctp.conf"
+if [ -f "${modprobepath}" ]; then
+    if grep install.*sctp.*\/bin\/true ${modprobepath} /dev/null && grep blacklist.*sctp ${modprobepath} /dev/null; then
+        echo "OK: 停用SCTP協定" >> ${FCB_SUCCESS}
+    else
+        cat <<EOF >> ${FCB_FIX}
+
+FIX: 127 停用SCTP協定
+====== 不符合FCB規範 ======
+${modprobepath} 內容尚未設定
+====== FCB建議設定值 ======
+# 停用
+====== FCB設定方法值 ======
+# 開啟終端機，執行vim指令，在/etc/modprobe.d目錄，新增或編輯「sctp.conf」檔案，範例如下：
+# vim ${modprobepath}
+並在檔案中加入以下內容：
+install sctp /bin/true
+blacklist sctp
+# 完成後，請重新開機
+==========================
+EOF
+    fi
+else
+    touch ${modprobepath}
+    cat <<EOF >> ${FCB_FIX}
+
+FIX: 127 停用SCTP協定
+====== 不符合FCB規範 ======
+${modprobepath} 內容尚未設定
+====== FCB建議設定值 ======
+# 停用
+====== FCB設定方法值 ======
+# 開啟終端機，執行vim指令，在/etc/modprobe.d目錄，新增或編輯「sctp.conf」檔案，範例如下：
+# vim ${modprobepath}
+並在檔案中加入以下內容：
+install sctp /bin/true
+blacklist sctp
+# 完成後，請重新開機
+==========================
+EOF
+fi
+
+echo "128 停用RDS協定"
+modprobepath="/etc/modprobe.d/rds.conf"
+if [ -f "${modprobepath}" ]; then
+    if grep install.*rds.*\/bin\/true ${modprobepath} /dev/null && grep blacklist.*rds ${modprobepath} /dev/null; then
+        echo "OK: 停用SCTP協定" >> ${FCB_SUCCESS}
+    else
+        cat <<EOF >> ${FCB_FIX}
+
+FIX: 128 停用RDS協定
+====== 不符合FCB規範 ======
+${modprobepath} 內容尚未設定
+====== FCB建議設定值 ======
+# 停用
+====== FCB設定方法值 ======
+# 開啟終端機，執行vim指令，在/etc/modprobe.d目錄，新增或編輯「rds.conf」檔案，範例如下：
+# vim ${modprobepath}
+並在檔案中加入以下內容：
+install rds /bin/true
+blacklist rds
+# 完成後，請重新開機
+==========================
+EOF
+    fi
+else
+    touch ${modprobepath}
+    cat <<EOF >> ${FCB_FIX}
+
+FIX: 128 停用RDS協定
+====== 不符合FCB規範 ======
+/etc/modprobe.d/rds.conf 內容尚未設定
+====== FCB建議設定值 ======
+# 停用
+====== FCB設定方法值 ======
+# 開啟終端機，執行vim指令，在/etc/modprobe.d目錄，新增或編輯「rds.conf」檔案，範例如下：
+# vim /etc/modprobe.d/rds.conf
+並在檔案中加入以下內容：
+install rds /bin/true
+blacklist rds
+# 完成後，請重新開機
+==========================
+EOF
+fi
+
+echo "129 停用TIPC協定"
+modprobepath="/etc/modprobe.d/tipc.conf"
+if [ -f "${modprobepath}" ]; then
+    if grep install.*ticp.*\/bin\/true ${modprobepath} /dev/null && grep blacklist.*ticp ${modprobepath} /dev/null; then
+        echo "OK: 129 停用TIPC協定"
+    else
+        echo << EOF >> ${FCB_FIX}
+FIX: 129 停用TIPC協定
+====== 不符合FCB規範 ======
+${modprobepath} 內容尚未設定
+====== FCB建議設定值 ======
+# 停用
+====== FCB設定方法值 ======
+# 開啟終端機，執行vim指令，在/etc/modprobe.d目錄，新增或編輯「tipc.conf」檔案，範例如下：
+# vim ${modprobepath}
+並在檔案中加入以下內容：
+install tipc /bin/true
+blacklist tipc
+# 完成後，請重新開機
+==========================
+EOF
+    fi
+else
+    touch ${modprobepath}
+    cat <<EOF >> ${FCB_FIX}
+
+FIX: 129 停用TIPC協定
+====== 不符合FCB規範 ======
+/etc/modprobe.d/tipc.conf 內容尚未設定
+====== FCB建議設定值 ======
+# 停用
+====== FCB設定方法值 ======
+# 開啟終端機，執行vim指令，在/etc/modprobe.d目錄，新增或編輯「tipc.conf」檔案，範例如下：
+# vim /etc/modprobe.d/tipc.conf
+並在檔案中加入以下內容：
+install tipc /bin/true
+blacklist tipc
+# 完成後，請重新開機
+==========================
+EOF
+fi
+
+echo "130 無線網路介面"
+if nmcli radio all | grep disabled >/dev/null; then
+    echo "OK: 131 網路介面混雜模式"
+else
+    cat <<EOF >> ${FCB_FIX}
+
+FIX: 130 無線網路介面
+====== 不符合FCB規範 ======
+$(nmcli radio all)
+====== FCB建議設定值 ======
+# 停用
+====== FCB設定方法值 ======
+# 開啟終端機，執行以下指令，停用所有無線介面：
+nmcli radio all off
+==========================
+EOF
+fi
+
+echo "131 網路介面混雜模式"
+if ip link | grep -i promisc >/dev/null; then
+    echo "OK: 131 網路介面混雜模式"
+else
+    cat <<EOF >> ${FCB_FIX}
+
+FIX: 131 網路介面混雜模式
+====== 不符合FCB規範 ======
+$(ip link | grep -i promisc)
+====== FCB建議設定值 ======
+# 停用
+====== FCB設定方法值 ======
+# 開啟終端機，執行以下指令，檢查網路介面是否處於混雜模式：
+ip link | grep -i promisc
+# 若發現網路介面處於混雜模式，則執行以下指令，關閉網路介面混雜模式：
+ip link set dev (網路介面裝置名稱) multicast off promisc off
+==========================
+EOF
+fi
