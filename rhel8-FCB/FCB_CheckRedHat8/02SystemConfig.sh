@@ -1,14 +1,4 @@
 # 系統設定與維護
-# 符合FCB規範
-FCB_SUCCESS="/root/FCB_DOCS/TCBFCB_SuccessCheck-$(date '+%Y%m%d').log"
-# 需修正檢視
-FCB_FIX="/root/FCB_DOCS/TCBFCB_FixCheck-$(date '+%Y%m%d').log"
-# 執行異常錯誤
-FCB_ERROR="/root/FCB_DOCS/TCBFCB_ErrorCheck-$(date '+%Y%m%d').log"
-# 顯示日期時間
-echo "$(date '+%Y/%m/%d %H:%M:%S')" >> ${FCB_SUCCESS}
-echo "$(date '+%Y/%m/%d %H:%M:%S')" >> ${FCB_FIX}
-
 echo "TASK [類別 系統設定與維護] ****************************************" >> ${FCB_SUCCESS}
 echo "TASK [類別 系統設定與維護] ****************************************" >> ${FCB_FIX}
 
@@ -357,101 +347,267 @@ fips-mode-setup --enable
 EOF
 fi
 
-# 45~60
-echo "45~60 檢查passwd shadow group gshadow 檔案擁有者 群組 權限"
-index=1
-while IFS= read -r line; do
-    AuditTools[$index]="$line"
-    if [ -f "/etc/${AuditTools[${index}]}" ]; then
-        if stat -c "%U %G" /etc/${AuditTools[${index}]} | grep -E root.*root >/dev/null; then
-            echo "OK: ${AuditTools[${index}]} 檔案擁有者與群組" >> ${FCB_SUCCESS}
-        else
-            cat <<EOF >> ${FCB_FIX}
+echo '45 /etc/passwd檔案所有權'
+if stat -c "%U %G" /etc/passwd | grep -E ^root.*root$ >/dev/null; then
+    echo 'OK: 45 /etc/passwd檔案所有權' >> ${FCB_SUCCESS}
+else
+    cat <<EOF >> ${FCB_FIX}
 
-FIX: ${AuditTools[${index}]} 檔案擁有者與群組
+FIX: 45 /etc/passwd檔案所有權
 ====== 不符合FCB規範 ======
-$(stat -c "檔名%n 擁有者%U 群組%G" /etc/${AuditTools[${index}]})
+$(stat -c "檔案名稱: %n, 檔案擁有者: %U, 檔案群組: %G" /etc/passwd)
 ====== FCB建議設定值 ======
-# root:root
+# 檔案擁有者 root:root
 ====== FCB設定方法值 ======
-chown root:root ${AuditTools[${index}]}
+chown root:root /etc/passwd
 EOF
-        fi
-    else
-        echo "File /etc/${AuditTools[${index}]} does not exists" >> ${FCB_FIX}
-    fi
-    index=$((index + 1))
-# 檔案擁有者與群組
-done <<EOF
-passwd
-shadow
-group
-gshadow
-passwd-
-shadow-
-group-
-gshadow-
-EOF
+fi
 
-index=1
-while IFS= read -r line; do
-    AuditTools[$index]="$line"
-    if [ -f "/etc/${AuditTools[${index}]}" ]; then
-        if stat -c "%a" /etc/${AuditTools[${index}]} | grep [0-6][0-4][0-4] >/dev/null; then
-            echo "OK: ${AuditTools[${index}]} 檔案權限" >> ${FCB_SUCCESS}
-        else
-            cat <<EOF >> ${FCB_FIX}
+echo '46 /etc/passwd檔案權限'
+if stat -c "%a" /etc/passwd | grep -E [0-6][0-4][0-4] >/dev/null; then
+    echo 'OK: 46 /etc/passwd檔案權限' >> ${FCB_SUCCESS}
+else
+    cat <<EOF >> ${FCB_FIX}
 
-FIX: ${AuditTools[${index}]} 檔案擁有者與群組
+FIX: 46 /etc/passwd檔案權限
 ====== 不符合FCB規範 ======
-$(stat -c "檔名%n 權限%a" /etc/${AuditTools[${index}]})
+$(stat -c "%n %a" /etc/passwd)
 ====== FCB建議設定值 ======
 # 644或更低權限
 ====== FCB設定方法值 ======
-chmod 600 ${AuditTools[${index}]}
+chmod 644 /etc/passwd
 EOF
-        fi
-    else
-        echo "File /etc/${AuditTools[${index}]} does not exists" >> ${FCB_FIX}
-    fi
-    index=$((index + 1))
-# 檔案擁有者與群組
-done <<EOF
-passwd
-group
-passwd-
-group-
-EOF
+fi
 
-index=1
-while IFS= read -r line; do
-    AuditTools[$index]="$line"
-    if [ -f "/etc/${AuditTools[${index}]}" ]; then
-        if stat -c "%a" /etc/${AuditTools[${index}]} | grep 0 >/dev/null; then
-            echo "OK: /etc/${AuditTools[${index}]} 檔案權限" >> ${FCB_SUCCESS}
-        else
-            cat <<EOF >> ${FCB_FIX}
+echo '47 /etc/shadow檔案所有權'
+if stat -c "%U %G" /etc/shadow | grep -E ^root.*root$ >/dev/null || stat -c "%U %G" /etc/shadow | grep -E ^root.*shadow$ >/dev/null; then
+    echo 'OK: 47 /etc/shadow檔案所有權' >> ${FCB_SUCCESS}
+else
+    cat <<EOF >> ${FCB_FIX}
 
-FIX: ${AuditTools[${index}]} 檔案擁有者與群組
+FIX: 47 /etc/shadow檔案所有權
 ====== 不符合FCB規範 ======
-$(stat -c "檔名%n 權限%a" /etc/${AuditTools[${index}]})
+$(stat -c "%a, %U:%G" /etc/shadow)
+====== FCB建議設定值 ======
+# root:root或root:shadow
+====== FCB設定方法值 ======
+chown root:root /etc/shadow
+或
+chown root:shadow /etc/shadow
+EOF
+fi
+
+echo '48 /etc/shadow檔案權限'
+if stat -c "%a" /etc/shadow | grep -E 0 >/dev/null; then
+    echo 'OK: 48 /etc/shadow檔案權限' >> ${FCB_SUCCESS}
+else
+    cat <<EOF >> ${FCB_FIX}
+
+FIX: 48 /etc/shadow檔案權限
+====== 不符合FCB規範 ======
+$(stat -c "%n, %a" /etc/shadow)
+====== FCB建議設定值 ======
+# 0
+====== FCB設定方法值 ======
+chmod 0 /etc/shadow
+EOF
+fi
+
+echo '49 /etc/group檔案所有權'
+if stat -c "%U %G" /etc/group | grep -E ^root.*root$ >/dev/null; then
+    echo 'OK: 49 /etc/group檔案所有權' >> ${FCB_SUCCESS}
+else
+    cat <<EOF >> ${FCB_FIX}
+
+FIX: 49 /etc/group檔案所有權
+====== 不符合FCB規範 ======
+$(stat -c "%n, %U:%G" /etc/group)
+====== FCB建議設定值 ======
+# root:root
+====== FCB設定方法值 ======
+chown root:root /etc/group
+EOF
+fi
+
+echo '50 /etc/group檔案權限'
+if stat -c "%a" /etc/group | grep [0-6][0-4][0-4] >/dev/null; then
+    echo 'OK: 50 /etc/group檔案權限' >> ${FCB_SUCCESS}
+else
+    cat <<EOF >> ${FCB_FIX}
+
+FIX: 50 /etc/group檔案權限
+====== 不符合FCB規範 ======
+$(stat -c "%n, %a" /etc/group)
+====== FCB建議設定值 ======
+# 檔案權限為644或更低權限
+====== FCB設定方法值 ======
+chmod 644 /etc/group
+EOF
+fi
+
+echo '51 /etc/gshadow檔案所有權'
+if stat -c "%U %G" /etc/gshadow | grep -E ^root.*root$ >/dev/null; then
+    echo 'OK: 51 /etc/gshadow檔案所有權' >> ${FCB_SUCCESS}
+else
+    cat <<EOF >> ${FCB_FIX}
+
+FIX: 51 /etc/gshadow檔案所有權
+====== 不符合FCB規範 ======
+$(stat -c "%U %G" /etc/gshadow)
+====== FCB建議設定值 ======
+# root:root
+====== FCB設定方法值 ======
+chmod root:root /etc/gshadow
+EOF
+fi
+
+echo '52 /etc/gshadow檔案權限'
+if stat -c "%a" /etc/gshadow | grep 0 >/dev/null; then
+    echo 'OK: 52 /etc/gshadow檔案權限' >> ${FCB_SUCCESS}
+else
+    cat <<EOF >> ${FCB_FIX}
+
+FIX: 52 /etc/gshadow檔案權限
+====== 不符合FCB規範 ======
+$(stat -c "%n, %a" /etc/gshadow)
 ====== FCB建議設定值 ======
 # 000
 ====== FCB設定方法值 ======
-chmod 0 ${AuditTools[${index}]}
+chmod 0 /etc/gshadow
 EOF
-        fi
-    else
-        echo "File /etc/${AuditTools[${index}]} does not exists" >> ${FCB_FIX}
-    fi
-    index=$((index + 1))
-# 檔案擁有者與群組
-done <<EOF
-shadow
-gshadow
-shadow-
-gshadow-
+fi
+
+echo '53 /etc/passwd-檔案所有權'
+if stat -c "%U %G" /etc/passwd- | grep -E ^root.*root$ >/dev/null; then
+    echo 'OK: 53 /etc/passwd-檔案所有權' >> ${FCB_SUCCESS}
+else
+    cat <<EOF >> ${FCB_FIX}
+
+FIX: 53 /etc/passwd-檔案所有權
+====== 不符合FCB規範 ======
+$(stat -c "%n, %U:%G" /etc/passwd-)
+====== FCB建議設定值 ======
+# root:root
+====== FCB設定方法值 ======
+chown root:root /etc/passwd-
 EOF
+fi
+
+echo '54 /etc/passwd-檔案權限'
+if stat -c "%a" /etc/passwd- | grep [0-6][0-4][0-4] >/dev/null; then
+    echo 'OK: 54 /etc/passwd-檔案權限' >> ${FCB_SUCCESS}
+else
+    cat <<EOF >> ${FCB_FIX}
+
+FIX: 54 /etc/passwd-檔案權限
+====== 不符合FCB規範 ======
+$(stat -c "%a" /etc/passwd-)
+====== FCB建議設定值 ======
+# 644或是更低權限
+====== FCB設定方法值 ======
+chmod 600 /etc/passwd-
+EOF
+fi
+
+echo '55 /etc/shadow-檔案所有權'
+if stat -c "%U %G" /etc/shadow- | grep -E ^root.*root$ >/dev/null || stat -c "%U %G" /etc/shadow- | grep -E ^root.*shadow$ >/dev/null; then
+    echo 'OK: 55 /etc/shadow-檔案所有權' >> ${FCB_SUCCESS}
+else
+    cat <<EOF >> ${FCB_FIX}
+
+FIX: 55 /etc/shadow-檔案所有權
+====== 不符合FCB規範 ======
+$(stat -c "%U %G" /etc/shadow-)
+====== FCB建議設定值 ======
+# root:root或root:shadow
+====== FCB設定方法值 ======
+chown root:root /etc/shadow-
+或
+chown root:shadow /etc/shadow-"
+EOF
+fi
+
+echo '56 /etc/shadow-檔案權限'
+if stat -c "%a" /etc/shadow- | grep 0 >/dev/null; then
+    echo 'OK: 56 /etc/shadow-檔案權限' >> ${FCB_SUCCESS}
+else
+    cat <<EOF >> ${FCB_FIX}
+
+FIX: 56 /etc/shadow-檔案權限
+====== 不符合FCB規範 ======
+$(stat -c "%n, %a" /etc/shadow-)
+====== FCB建議設定值 ======
+# 檔案的權限為000
+====== FCB設定方法值 ======
+chmod 0 /etc/shadow-
+EOF
+fi
+
+echo '57 /etc/group-檔案所有權'
+if stat -c "%U %G" /etc/group- | grep -E ^root.*root$ >/dev/null; then
+    echo 'OK: 57 /etc/group-檔案所有權' >> ${FCB_SUCCESS}
+else
+    cat <<EOF >> ${FCB_FIX}
+
+FIX: 57 /etc/group-檔案所有權
+====== 不符合FCB規範 ======
+$(stat -c "%n, %U:%G" /etc/group-)
+====== FCB建議設定值 ======
+# root:root
+====== FCB設定方法值 ======
+chmod root:root /etc/group-
+EOF
+fi
+
+echo '58 /etc/group-檔案權限'
+if stat -c "%a" /etc/group- | grep [0-6][0-4][0-4] >/dev/null; then
+    echo 'OK: 58 /etc/group-檔案權限' >> ${FCB_SUCCESS}
+else
+    cat <<EOF >> ${FCB_FIX}
+
+FIX: 58 /etc/group-檔案權限
+====== 不符合FCB規範 ======
+$(stat -c "%n, %a" /etc/group-)
+====== FCB建議設定值 ======
+# 644或更低權限
+====== FCB設定方法值 ======
+chmod 644 /etc/group-
+EOF
+fi
+
+echo '59 /etc/gshadow-檔案所有權'
+if stat -c "%U %G" /etc/gshadow- | grep -E ^root.*root$ >/dev/null; then
+    echo 'OK: 59 /etc/gshadow-檔案所有權' >> ${FCB_SUCCESS}
+else
+    cat <<EOF >> ${FCB_FIX}
+
+FIX: 59 /etc/gshadow-檔案所有權
+====== 不符合FCB規範 ======
+$(stat -c "%n, %U:%G" /etc/gshadow-)
+====== FCB建議設定值 ======
+# root:root或root:shadow
+====== FCB設定方法值 ======
+chown root:root /etc/gshadow-
+或
+chown root:shadow /etc/gshadow-
+EOF
+fi
+
+echo '60 /etc/gshadow-檔案權限'
+if stat -c "%a" /etc/gshadow- | grep 0 >/dev/null; then
+    echo 'OK: 60 /etc/gshadow-檔案權限' >> ${FCB_SUCCESS}
+else
+    cat <<EOF >> ${FCB_FIX}
+
+FIX: 60 /etc/gshadow-檔案權限
+====== 不符合FCB規範 ======
+$(stat -c "%n, %a" /etc/gshadow-)
+====== FCB建議設定值 ======
+# 檔案的權限為000
+====== FCB設定方法值 ======
+chmod 0 /etc/gshadow-
+EOF
+fi
 
 echo '61 其他使用者寫入具有全域寫入權限檔案'
 # 檢查是否找到other具有可寫入權限的檔案
@@ -730,32 +886,55 @@ for x in $(echo "$RPCV" | tr ":" " "); do
 done
 
 echo '75 passwd不允許存在「+」符號'
-echo '76 shadow不允許存在「+」符號'
-echo '77 group不允許存在「+」符號'
-index=1
-while IFS= read -r line; do
-    auditlog[$index]="$line"
-    if grep '^\+' ${auditlog[$index]} >/dev/null; then
+if grep '^\+:' /etc/passwd >/dev/null; then
         cat <<EOF >> ${FCB_FIX}
 
-FIX: ${auditlog[$index]}不允許存在「+」符號
+FIX: 75 passwd不允許存在「+」符號
 ====== 不符合FCB規範 ======
-$(grep -n '^\+' ${auditlog[$index]})
+$(grep -n '^\+' /etc/passwd)
 ====== FCB建議設定值 ======
 # 禁止存在「+」符號
 ====== FCB設定方法值 ======
-# 編輯${auditlog[$index]}檔案，將行首為「+」符號之列移除
+# 編輯/etc/passwd檔案，將行首為「+」符號之列移除
 =========================
 EOF
-    else
-        echo "OK: ${auditlog[${index}]}不存在「+」符號" >> ${FCB_SUCCESS}
-    fi
-    index=$((index + 1))
-done <<EOF
-/etc/passwd
-/etc/shadow
-/etc/group
+else
+    echo "OK: 75 passwd不允許存在「+」符號" >> ${FCB_SUCCESS}
+fi
+
+echo '76 shadow不允許存在「+」符號'
+if grep '^\+:' /etc/shadow >/dev/null; then
+        cat <<EOF >> ${FCB_FIX}
+
+FIX: 76 shadow不允許存在「+」符號
+====== 不符合FCB規範 ======
+$(grep '^\+:' /etc/shadow)
+====== FCB建議設定值 ======
+# 禁止存在「+」符號
+====== FCB設定方法值 ======
+# 編輯/etc/shadow檔案，將行首為「+」符號之列移除
+=========================
 EOF
+else
+    echo "OK: 76 shadow不允許存在「+」符號" >> ${FCB_SUCCESS}
+fi
+
+echo '77 group不允許存在「+」符號'
+if grep '^\+:' /etc/group >/dev/null; then
+        cat <<EOF >> ${FCB_FIX}
+
+FIX: 77 group不允許存在「+」符號
+====== 不符合FCB規範 ======
+$(grep '^\+:' /etc/group)
+====== FCB建議設定值 ======
+# 禁止存在「+」符號
+====== FCB設定方法值 ======
+# 編輯/etc/group檔案，將行首為「+」符號之列移除
+=========================
+EOF
+else
+    echo "OK: 77 group不允許存在「+」符號" >> ${FCB_SUCCESS}
+fi
 
 echo '78 UID=0之帳號'
 emptyfiles=$(awk -F: '($3 == 0 ) { print $1}' /etc/passwd | grep -v root)
@@ -805,11 +984,6 @@ EOF
     fi
 done
 
-# 80 81 使用者家目錄擁有者
-# 82 使用者家目錄之「.」檔案權限
-# 83 使用者家目錄之「.forward」檔案權限
-# 84 使用者家目錄之「.netrc」檔案權限
-# 85 使用者家目錄之「.rhosts」檔案權限
 echo "80 81 使用者家目錄擁有者"
 echo "82 使用者家目錄之「.」檔案權限"
 echo "83 使用者家目錄之「.forward」檔案權限"

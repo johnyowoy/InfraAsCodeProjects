@@ -1,14 +1,4 @@
 # 網路設定
-# 符合FCB規範
-FCB_SUCCESS="/root/FCB_DOCS/TCBFCB_SuccessCheck-$(date '+%Y%m%d').log"
-# 需修正檢視
-FCB_FIX="/root/FCB_DOCS/TCBFCB_FixCheck-$(date '+%Y%m%d').log"
-# 執行異常錯誤
-FCB_ERROR="/root/FCB_DOCS/TCBFCB_ErrorCheck-$(date '+%Y%m%d').log"
-# 顯示日期時間
-echo "$(date '+%Y/%m/%d %H:%M:%S')" >> ${FCB_SUCCESS}
-echo "$(date '+%Y/%m/%d %H:%M:%S')" >> ${FCB_FIX}
-
 echo "TASK [類別 網路設定] ****************************************" >> ${FCB_SUCCESS}
 echo "TASK [類別 網路設定] ****************************************" >> ${FCB_FIX}
 

@@ -1,11 +1,12 @@
-# 日誌與稽核
-function AuditLogConfig () {
-    echo "132 install auditd package"
-    dnf install audit audit-libs
 
-    echo "133 enable auditd service"
-    systemctl start auditd
-    systemctl --now enable auditd
+# 日誌與稽核
+
+echo "132 auditd套件"
+dnf install audit audit-libs
+
+echo "133 enable auditd service"
+systemctl start auditd
+systemctl --now enable auditd
 
     echo "134 稽核auditd服務啟動前之程序"
     if cat /etc/default/grub | grep "^GRUB_CMDLINE_LINUX=.*audit=1.*" >/dev/null; then
@@ -330,6 +331,3 @@ EOF
 
     # 183 設定/var/log目錄下所有日誌檔案權限
     find /var/log -type f -perm /g=w,g=x,o=w,o=x -exec chmod 644 {} \;
-
-}
-AuditLogConfig
