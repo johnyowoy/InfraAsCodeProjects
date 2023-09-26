@@ -1,9 +1,9 @@
 # 安裝與維護軟體
-echo "TASK [類別 安裝與維護軟體] ****************************************" >> ${FCB_SUCCESS}
-echo "TASK [類別 安裝與維護軟體] ****************************************" >> ${FCB_FIX}
+echo "CHECK [類別 安裝與維護軟體] ****************************************" >> ${FCB_SUCCESS}
+echo "CHECK [類別 安裝與維護軟體] ****************************************" >> ${FCB_FIX}
 
-echo "TASK [Print Message] ****************************************" >> ${FCB_SUCCESS}
-echo "TASK [Print Message] ****************************************" >> ${FCB_FIX}
+echo "CHECK [Print Message] ****************************************" >> ${FCB_SUCCESS}
+echo "CHECK [Print Message] ****************************************" >> ${FCB_FIX}
 
 echo '102 NIS用戶端套件'
 if rpm -q ypbind >/dev/null 2>&1; then

@@ -1,9 +1,9 @@
 # 系統設定與維護
-echo "TASK [類別 系統設定與維護] ****************************************" >> ${FCB_SUCCESS}
-echo "TASK [類別 系統設定與維護] ****************************************" >> ${FCB_FIX}
+echo "CHECK [類別 系統設定與維護] ****************************************" >> ${FCB_SUCCESS}
+echo "CHECK [類別 系統設定與維護] ****************************************" >> ${FCB_FIX}
 
-echo "TASK [Print Message] ****************************************" >> ${FCB_SUCCESS}
-echo "TASK [Print Message] ****************************************" >> ${FCB_FIX}
+echo "CHECK [Print Message] ****************************************" >> ${FCB_SUCCESS}
+echo "CHECK [Print Message] ****************************************" >> ${FCB_FIX}
 
 echo "32 GPG簽章驗證(yum)"
 if grep -q "gpgcheck=1" /etc/yum.conf; then

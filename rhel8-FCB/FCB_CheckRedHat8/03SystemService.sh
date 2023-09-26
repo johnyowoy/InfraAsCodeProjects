@@ -1,9 +1,9 @@
 # 系統服務
-echo "TASK [類別 系統服務] ****************************************" >> ${FCB_SUCCESS}
-echo "TASK [類別 系統服務] ****************************************" >> ${FCB_FIX}
+echo "CHECK [類別 系統服務] ****************************************" >> ${FCB_SUCCESS}
+echo "CHECK [類別 系統服務] ****************************************" >> ${FCB_FIX}
 
-echo "TASK [Print Message] ****************************************" >> ${FCB_SUCCESS}
-echo "TASK [Print Message] ****************************************" >> ${FCB_FIX}
+echo "CHECK [Print Message] ****************************************" >> ${FCB_SUCCESS}
+echo "CHECK [Print Message] ****************************************" >> ${FCB_FIX}
 
 echo '92 xinetd套件'
 if rpm -q "xinetd" >/dev/null 2>&1; then

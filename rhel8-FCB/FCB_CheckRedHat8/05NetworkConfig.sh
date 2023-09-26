@@ -1,9 +1,9 @@
 # 網路設定
-echo "TASK [類別 網路設定] ****************************************" >> ${FCB_SUCCESS}
-echo "TASK [類別 網路設定] ****************************************" >> ${FCB_FIX}
+echo "CHECK [類別 網路設定] ****************************************" >> ${FCB_SUCCESS}
+echo "CHECK [類別 網路設定] ****************************************" >> ${FCB_FIX}
 
-echo "TASK [Print Message] ****************************************" >> ${FCB_SUCCESS}
-echo "TASK [Print Message] ****************************************" >> ${FCB_FIX}
+echo "CHECK [Print Message] ****************************************" >> ${FCB_SUCCESS}
+echo "CHECK [Print Message] ****************************************" >> ${FCB_FIX}
 
 # 網路設定
 NetworkRulesPath='/etc/sysctl.d/tcb_fcbnetwork.conf'
@@ -115,7 +115,7 @@ echo "127 停用SCTP協定"
 modprobepath="/etc/modprobe.d/sctp.conf"
 if [ -f "${modprobepath}" ]; then
     if grep install.*sctp.*\/bin\/true ${modprobepath} /dev/null && grep blacklist.*sctp ${modprobepath} /dev/null; then
-        echo "OK: 停用SCTP協定" >> ${FCB_SUCCESS}
+        echo "OK: 127 停用SCTP協定" >> ${FCB_SUCCESS}
     else
         cat <<EOF >> ${FCB_FIX}
 
@@ -158,7 +158,7 @@ echo "128 停用RDS協定"
 modprobepath="/etc/modprobe.d/rds.conf"
 if [ -f "${modprobepath}" ]; then
     if grep install.*rds.*\/bin\/true ${modprobepath} /dev/null && grep blacklist.*rds ${modprobepath} /dev/null; then
-        echo "OK: 停用SCTP協定" >> ${FCB_SUCCESS}
+        echo "OK: 128 停用SCTP協定" >> ${FCB_SUCCESS}
     else
         cat <<EOF >> ${FCB_FIX}
 

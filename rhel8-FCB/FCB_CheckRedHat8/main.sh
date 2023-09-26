@@ -17,6 +17,24 @@
 # alert: Condition that needs immediate intervention
 # emerg: Emergency condition
 
+# ==============
+# CHECK 已完成類別
+# ==============
+# 
+# ==============
+# CHECK 尚未完成類別
+# ==============
+# 01磁碟與檔案系統
+# 
+# ==============
+
+# ==============
+# 問題討論項次
+# ==============
+# 96 有些套件沒有snmpv3，只有snmpv2
+# ==============
+# 回報給資安科
+# ==============
 # 尚未確認實作 項次
 # Number
 # 08~28 獨立分割磁區或邏輯磁區，fstab nodev 啟用
@@ -26,13 +44,11 @@
 # 88
 # 91 shadow 需要討論，技術問題
 # 93 chrony校時設定
-# 94 rsyncd無法使用systemctl
-# 96 snmp需要討論，改用snmpv3
 # 108
 # 119 不回應ICMP廣播請求
 # 158
 # 161 sudo logfile
-# 185 186 187 188
+# 189
 # 207 208 221
 # 223 已經預設 ENCRYPT_METHOD SHA512
 # 230
@@ -97,7 +113,7 @@ echo "================================="
 echo "==================================="
 echo "============= 網路設定 ============="
 echo "==================================="
-source ./NetworkConfig.sh 2>> ${FCB_ERROR}
+source ./05NetworkConfig.sh 2>> ${FCB_ERROR}
 
 echo "=========================="
 echo "======= LOG Config ======="
@@ -105,7 +121,24 @@ echo "=========================="
 echo "=========================="
 echo "======== 日誌與稽核 ========"
 echo "=========================="
-#source ./AuditLogConfig.sh
+#source ./06AuditLogConfig.sh
+
+echo "=========================="
+echo "======= SELinux Config ======="
+echo "=========================="
+echo "=========================="
+echo "======== SElinux ========"
+echo "=========================="
+source ./07SELinuxConfig.sh 2>> ${FCB_ERROR}
+
+echo "=========================="
+echo "======= Cron Config ======="
+echo "=========================="
+echo "=========================="
+echo "======== cron設定 ========"
+echo "=========================="
+source ./08CronConfig.sh 2>> ${FCB_ERROR}
+
 
 echo "==================================="
 echo "===== Firewalld Configuration ====="
