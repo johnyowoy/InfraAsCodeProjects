@@ -244,50 +244,7 @@ fi
 
 echo '42 核心傾印功能'
 if grep ^hard.*core.*0 /etc/security/limits.conf >/dev/null; then
-    if grep ^fs.suid_dumpable.*=.*0 /etc/sysctl.conf >/dev/null; then
-        if grep ^Storage=none$ /etc/systemd/coredump.conf >/dev/null; then
-            if grep ^ProcessSizeMax=0$ /etc/systemd/coredump.conf >/dev/null; then
-                echo 'OK: 42 核心傾印功能' >> ${FCB_SUCCESS}
-            else
-                cat <<EOF >> ${FCB_FIX}
-
-FIX: 42 核心傾印功能
-====== 不符合FCB規範 ======
-$(grep ProcessSizeMax /etc/systemd/coredump.conf)
-====== FCB建議設定值 ======
-ProcessSizeMax=0
-====== FCB設定方法值 ======
-# 編輯/etc/systemd/coredump.conf 檔案，修改以下內容：
-ProcessSizeMax=0
-EOF
-            fi
-        else
-            cat <<EOF >> ${FCB_FIX}
-
-FIX: 42 核心傾印功能
-====== 不符合FCB規範 ======
-$(grep Storage /etc/systemd/coredump.conf)
-====== FCB建議設定值 ======
-Storage=none
-====== FCB設定方法值 ======
-# 編輯/etc/systemd/coredump.conf 檔案，修改以下內容：
-Storage=none
-EOF
-        fi
-    else
-        cat <<EOF >> ${FCB_FIX}
-
-FIX: 42 核心傾印功能
-====== 不符合FCB規範 ======
-====== FCB建議設定值 ======
-# 停用
-====== FCB設定方法值 ======
-# (方法一)編輯/etc/sysctl.conf 或/etc/sysctl.d/目錄下檔案，設定參數如下：
-fs.suid_dumpable = 0
-# (方法二)開啟終端機，執行以下指令，設定核心參數：
-sysctl -w fs.suid_dumpable=0
-EOF
-    fi
+    echo 'OK: 42 核心傾印功能' >> ${FCB_SUCCESS}
 else
     cat <<EOF >> ${FCB_FIX}
 
@@ -301,8 +258,57 @@ hard core 0
 EOF
 fi
 
+if sysctl -a | grep ^fs.suid_dumpable.*=.*0$ >/dev/null; then
+    echo 'OK: 42 核心傾印功能' >> ${FCB_SUCCESS}
+else
+    cat <<EOF >> ${FCB_FIX}
+
+FIX: 42 核心傾印功能
+====== 不符合FCB規範 ======
+====== FCB建議設定值 ======
+# 停用
+====== FCB設定方法值 ======
+# (方法一)編輯/etc/sysctl.conf 或/etc/sysctl.d/目錄下檔案，設定參數如下：
+fs.suid_dumpable = 0
+# (方法二)開啟終端機，執行以下指令，設定核心參數：
+sysctl -w fs.suid_dumpable=0
+EOF
+fi
+
+if grep ^Storage=none$ /etc/systemd/coredump.conf >/dev/null; then
+    echo 'OK: 42 核心傾印功能' >> ${FCB_SUCCESS}
+else
+    cat <<EOF >> ${FCB_FIX}
+
+FIX: 42 核心傾印功能
+====== 不符合FCB規範 ======
+$(grep Storage /etc/systemd/coredump.conf)
+====== FCB建議設定值 ======
+Storage=none
+====== FCB設定方法值 ======
+# 編輯/etc/systemd/coredump.conf 檔案，修改以下內容：
+Storage=none
+EOF
+fi
+
+if grep ^ProcessSizeMax=0$ /etc/systemd/coredump.conf >/dev/null; then
+    echo 'OK: 42 核心傾印功能' >> ${FCB_SUCCESS}
+else
+    cat <<EOF >> ${FCB_FIX}
+
+FIX: 42 核心傾印功能
+====== 不符合FCB規範 ======
+$(grep ProcessSizeMax /etc/systemd/coredump.conf)
+====== FCB建議設定值 ======
+ProcessSizeMax=0
+====== FCB設定方法值 ======
+# 編輯/etc/systemd/coredump.conf 檔案，修改以下內容：
+ProcessSizeMax=0
+EOF
+fi
+# ===============================================
 echo '43 記憶體位址空間配置隨機載入'
-if grep ^kernel.randomize_va_space.*=.*2 /etc/sysctl.conf >/dev/null; then
+if sysctl -a | grep ^kernel.randomize_va_space.*=.*2$ >/dev/null; then
     echo 'OK: 43 記憶體位址空間配置隨機載入' >> ${FCB_SUCCESS}
 else
     cat <<EOF >> ${FCB_FIX}
@@ -1166,6 +1172,8 @@ done
 
 echo '91 shadow群組成員'
 if awk -F: '($1=="shadow")' /etc/group >/dev/null; then
+    echo 'OK: 91 shadow群組成員' >> ${FCB_SUCCESS}
+else
     cat <<EOF >> ${FCB_FIX}
 
 FIX: 91 shadow群組成員
@@ -1181,6 +1189,4 @@ sed -ri 's/(^shadow:[^:]*:[^:]*:)([^:]+$)/\1/' /etc/group
 usermod -g (預設群組名稱) (帳號名稱)
 =========================
 EOF
-else
-    echo 'OK: 91 shadow群組成員' >> ${FCB_SUCCESS}
 fi

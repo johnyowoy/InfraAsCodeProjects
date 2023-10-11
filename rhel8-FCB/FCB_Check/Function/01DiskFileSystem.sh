@@ -1,36 +1,54 @@
-# 基本項目
 # 磁碟與檔案系統
-function DiskFilesystem () {
-    echo "1 停用cramfs檔案系統"
-    if [ -f /etc/modprobe.d/cramfs.conf ]; then
-        cramfsfile='/etc/modprobe.d/cramfs.conf'
-        if grep install' 'cramfs' '\/bin\/true ${cramfsfile} >/dev/null; then
-            if grep blacklist' 'cramfs ${cramfsfile} >/dev/null; then
-                echo "檢查OK"
-            else
-                sed -i '$a blacklist cramfs' ${cramfsfile}
-                rmmod cramfs
-                echo ${cramfsfile}"已新增blacklist cramfs"
-            fi
-        else
-            sed -i '$a install cramfs /bin/true' ${cramfsfile}
-            if grep blacklist' 'cramfs ${cramfsfile} >/dev/null; then
-                rmmod cramfs
-                echo ${cramfsfile}"已新增install cramfs /bin/true"
-            else
-                sed -i '$a blacklist cramfs' ${cramfsfile}
-                rmmod cramfs
-                echo ${cramfsfile}"已新增install cramfs /bin/true"
-                echo ${cramfsfile}"已新增blacklist cramfs"
-            fi
-        fi
+echo "CHECK [類別 磁碟與檔案系統] ****************************************" >> ${FCB_SUCCESS}
+echo "CHECK [類別 磁碟與檔案系統] ****************************************" >> ${FCB_FIX}
+
+echo "CHECK [Print Message] ****************************************" >> ${FCB_SUCCESS}
+echo "CHECK [Print Message] ****************************************" >> ${FCB_FIX}
+
+FilePath='/etc/modprobe.d/'
+
+echo '1 停用cramfs檔案系統'
+File='cramfs.conf'
+if [ -f ${FilePath}${File} ] >/dev/null 2>&1; then
+    if grep -q "^install.*${File}.*\/bin\/true$" ${FilePath}${File} >/dev/null 2>&1 || grep -q "^blacklist.*${File}$" ${FilePath}${File} >/dev/null 2>&1; then
+        echo "OK: 1 停用cramfs檔案系統" >> ${FCB_SUCCESS}
     else
-        touch /etc/modprobe.d/cramfs.conf
-        echo "# Ensure mounting of cramfs filesystems is disabled - modprobe" >> /etc/modprobe.d/cramfs.conf
-        sed -i '$a install cramfs /bin/true' /etc/modprobe.d/cramfs.conf
-        sed -i '$a blacklist cramfs' /etc/modprobe.d/cramfs.conf
-        rmmod cramfs
+        cat <<EOF >> ${FCB_FIX}
+
+FIX: 1 停用${File}檔案系統
+====== 不符合FCB規範 ======
+# ${FilePath}${File}檔案內容有誤
+====== FCB建議設定值 ======
+# 停用
+====== FCB設定方法值 ======
+# 在${FilePath}目錄新增或編輯「${File}」檔案
+vim ${FilePath}${File}
+# 並在檔案中加入以下內容：
+install ${File} /bin/true
+blacklist ${File}
+# 開啟終端機，執行下列指令，移除${File}模組：
+rmmod ${File}
+EOF
     fi
+else
+    cat <<EOF >> ${FCB_FIX}
+
+FIX: 1 停用${File}檔案系統
+====== 不符合FCB規範 ======
+# 尚未建立${FilePath}${File}檔案
+====== FCB建議設定值 ======
+# 停用
+====== FCB設定方法值 ======
+# 在${FilePath}目錄新增或編輯「${File}」檔案
+vim ${FilePath}${File}
+# 並在檔案中加入以下內容：
+install ${File} /bin/true
+blacklist ${File}
+# 開啟終端機，執行下列指令，移除${File}模組：
+rmmod ${File}
+EOF
+fi
+
 
     echo "2 停用squashfs檔案系統"
     if [ -f /etc/modprobe.d/squashfs.conf ]; then
@@ -123,5 +141,3 @@ function DiskFilesystem () {
     sed -i '$a install usb-storage /bin/true' /etc/modprobe.d/usb-storage.conf
     sed -i '$a blacklist usb-storage' /etc/modprobe.d/usb-storage.conf
     rmmod usb-storage
-}
-DiskFilesystem

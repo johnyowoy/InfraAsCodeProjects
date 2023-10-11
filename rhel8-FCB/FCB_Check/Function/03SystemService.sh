@@ -25,6 +25,22 @@ else
 fi
 
 echo '93 chrony校時設定'
+if grep ^server.*stdtime.tcbbank.com.tw.*iburst$ /etc/chrony.conf >/dev/null 2>&1; then
+    echo 'OK: 93 chrony校時設定' >> ${FCB_SUCCESS}
+else
+    cat <<EOF >> ${FCB_FIX}
+
+FIX: 93 chrony校時設定
+====== 不符合FCB規範 ======
+尚未設定
+====== FCB建議設定值 ======
+# 設定1個以上校時來源
+====== FCB設定方法值 ======
+# 編輯/etc/chrony.conf檔案，新增或修改NTP伺服器設定，範例如下：
+# 依據本行設定規範
+server server stdtime.tcbbank.com.tw iburst
+EOF
+fi
 
 echo '94 rsyncd服務'
 if systemctl is-active rsyncd | grep inactive >/dev/null 2>&1; then
