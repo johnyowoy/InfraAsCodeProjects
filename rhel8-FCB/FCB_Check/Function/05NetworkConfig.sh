@@ -1,9 +1,182 @@
-# 網路設定
+# 111不設定
 echo "CHECK [類別 網路設定] ****************************************" >> ${FCB_SUCCESS}
 echo "CHECK [類別 網路設定] ****************************************" >> ${FCB_FIX}
 
 echo "CHECK [Print Message] ****************************************" >> ${FCB_SUCCESS}
 echo "CHECK [Print Message] ****************************************" >> ${FCB_FIX}
+
+echo '108 IP轉送'
+if sysctl -a | grep ^net.ipv4.ip_forward\ =\ 0$ >/dev/null 2>&1 && sysctl -a | grep ^net.ipv6.conf.all.forwarding\ =\ 0$ >/dev/null 2>&1; then
+    echo 'OK: 108 網路設定 IP轉送' >> ${FCB_SUCCESS}
+else
+    cat <<EOF >> ${FCB_FIX}
+
+FIX: 108 IP轉送
+====== 不符合FCB規範 ======
+$(sysctl -a | grep net.ipv4.ip_forward\ =.*)
+$(sysctl -a | grep net.ipv6.conf.all.forwarding\ =.*)
+====== FCB建議設定值 ======
+# 停用IP轉送功能
+====== FCB設定方法值 ======
+sysctl -w net.ipv4.ip_forward=0
+sysctl -w net.ipv6.conf.all.forwarding=0
+EOF
+fi
+
+echo '109 所有網路介面傳送ICMP重新導向封包'
+if sysctl -a | grep ^net.ipv4.conf.all.send_redirects\ =\ 0$ >/dev/null 2>&1; then
+    echo 'OK: 109 所有網路介面傳送ICMP重新導向封包' >> ${FCB_SUCCESS}
+else
+    cat <<EOF >> ${FCB_FIX}
+
+FIX: 109 所有網路介面傳送ICMP重新導向封包
+====== 不符合FCB規範 ======
+$(sysctl -a | grep ^net.ipv4.conf.all.send_redirects.*)
+====== FCB建議設定值 ======
+# 禁止傳送ICMP重新導向封包
+====== FCB設定方法值 ======
+sysctl -w net.ipv4.conf.all.send_redirects=0
+EOF
+fi
+
+echo '110 預設網路介面傳送ICMP重新導向封包'
+if sysctl -a | grep ^net.ipv4.conf.default.send_redirects\ =\ 0$ >/dev/null 2>&1; then
+    echo 'OK: 110 預設網路介面傳送ICMP重新導向封包' >> ${FCB_SUCCESS}
+else
+    cat <<EOF >> ${FCB_FIX}
+
+FIX: 110 預設網路介面傳送ICMP重新導向封包
+====== 不符合FCB規範 ======
+$(sysctl -a | grep ^net.ipv4.conf.default.send_redirects.*)
+====== FCB建議設定值 ======
+# 禁止傳送ICMP重新導向封包
+====== FCB設定方法值 ======
+sysctl -w net.ipv4.conf.default.send_redirects=0
+EOF
+fi
+
+echo '113 所有網路介面接受ICMP重新導向封包'
+if sysctl -a | grep ^net.ipv4.conf.all.accept_redirects\ =\ 0$ >/dev/null 2>&1 && sysctl -a | grep ^net.ipv6.conf.all.accept_redirects\ =\ 0$ >/dev/null 2>&1; then
+    echo 'OK: 113 所有網路介面接受ICMP重新導向封包' >> ${FCB_SUCCESS}
+else
+    cat <<EOF >> ${FCB_FIX}
+
+FIX: 113 所有網路介面接受ICMP重新導向封包
+====== 不符合FCB規範 ======
+$(sysctl -a | grep ^net.ipv4.conf.all.accept_redirects.*)
+$(sysctl -a | grep ^net.ipv6.conf.all.accept_redirects.*)
+====== FCB建議設定值 ======
+# 阻擋ICMP重新導向封包
+====== FCB設定方法值 ======
+sysctl -w net.ipv4.conf.all.accept_redirects=0
+sysctl -w net.ipv6.conf.all.accept_redirects=0
+EOF
+fi
+
+echo '114 預設網路介面接受ICMP重新導向封包'
+if sysctl -a | grep ^net.ipv4.conf.default.accept_redirects\ =\ 0$ >/dev/null 2>&1 && sysctl -a | grep ^net.ipv6.conf.default.accept_redirects\ =\ 0$ >/dev/null 2>&1; then
+    echo 'OK: 114 預設網路介面接受ICMP重新導向封包' >> ${FCB_SUCCESS}
+else
+    cat <<EOF >> ${FCB_FIX}
+
+FIX: 114 預設網路介面接受ICMP重新導向封包
+====== 不符合FCB規範 ======
+$(sysctl -a | grep ^net.ipv4.conf.default.accept_redirects.*)
+$(sysctl -a | grep ^net.ipv6.conf.default.accept_redirects.*)
+====== FCB建議設定值 ======
+# 阻擋ICMP重新導向封包
+====== FCB設定方法值 ======
+sysctl -w net.ipv4.conf.default.accept_redirects=0
+sysctl -w net.ipv6.conf.default.accept_redirects=0
+EOF
+fi
+
+echo '115 所有網路介面接受安全的ICMP重新導向封包'
+if sysctl -a | grep ^net.ipv4.conf.all.secure_redirects\ =\ 0$ >/dev/null 2>&1 && sysctl -a | grep ^net.ipv6.conf.all.secure_redirects\ =\ 0$ >/dev/null 2>&1; then
+    echo 'OK: 115 所有網路介面接受安全的ICMP重新導向封包' >> ${FCB_SUCCESS}
+else
+    cat <<EOF >> ${FCB_FIX}
+
+FIX: 115 所有網路介面接受安全的ICMP重新導向封包
+====== 不符合FCB規範 ======
+$(sysctl -a | grep ^net.ipv4.conf.all.secure_redirects.*)
+$(sysctl -a | grep ^net.ipv6.conf.all.secure_redirects.*)
+====== FCB建議設定值 ======
+# 阻擋安全的ICMP重新導向封包
+====== FCB設定方法值 ======
+sysctl -w net.ipv4.conf.all.secure_redirects=0
+sysctl -w net.ipv6.conf.all.secure_redirects=0
+EOF
+fi
+
+echo '116 預設網路介面接受安全的ICMP重新導向封包'
+if  >/dev/null 2>&1; then
+    echo 'OK: 116 預設網路介面接受安全的ICMP重新導向封包' >> ${FCB_SUCCESS}
+else
+    cat <<EOF >> ${FCB_FIX}
+
+FIX: 116 預設網路介面接受安全的ICMP重新導向封包
+====== 不符合FCB規範 ======
+
+====== FCB建議設定值 ======
+# 
+====== FCB設定方法值 ======
+#
+
+EOF
+fi
+
+echo ''
+if  >/dev/null 2>&1; then
+    echo 'OK: ' >> ${FCB_SUCCESS}
+else
+    cat <<EOF >> ${FCB_FIX}
+
+FIX: 
+====== 不符合FCB規範 ======
+
+====== FCB建議設定值 ======
+# 
+====== FCB設定方法值 ======
+#
+
+EOF
+fi
+
+echo ''
+if  >/dev/null 2>&1; then
+    echo 'OK: ' >> ${FCB_SUCCESS}
+else
+    cat <<EOF >> ${FCB_FIX}
+
+FIX: 
+====== 不符合FCB規範 ======
+
+====== FCB建議設定值 ======
+# 
+====== FCB設定方法值 ======
+#
+
+EOF
+fi
+
+echo ''
+if  >/dev/null 2>&1; then
+    echo 'OK: ' >> ${FCB_SUCCESS}
+else
+    cat <<EOF >> ${FCB_FIX}
+
+FIX: 
+====== 不符合FCB規範 ======
+
+====== FCB建議設定值 ======
+# 
+====== FCB設定方法值 ======
+#
+
+EOF
+fi
+# ====================
 
 # 網路設定
 NetworkRulesPath='/etc/sysctl.d/tcb_fcbnetwork.conf'
@@ -18,6 +191,7 @@ while IFS= read -r line; do
     if grep "${NetworkConfig[${index}]}" ${NetworkRulesPath} >/dev/null; then
         echo "OK: ${NetworkConfig[${index}]}" >> ${FCB_SUCCESS}
     else
+        echo "-----------------------------------------------------------"
         cat << EOF >> ${FCB_FIX}
 # FIX: 編輯${NetworkRulesPath}，新增以下內容:
 ${NetworkConfig[${index}]}
