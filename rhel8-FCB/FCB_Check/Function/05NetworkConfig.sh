@@ -1,4 +1,4 @@
-# 111不設定
+# 111, 112, 117, 118
 echo "CHECK [類別 網路設定] ****************************************" >> ${FCB_SUCCESS}
 echo "CHECK [類別 網路設定] ****************************************" >> ${FCB_FIX}
 
@@ -110,70 +110,130 @@ EOF
 fi
 
 echo '116 預設網路介面接受安全的ICMP重新導向封包'
-if  >/dev/null 2>&1; then
+if sysctl -a | grep net.ipv4.conf.default.secure_redirects\ =\ 0$ >/dev/null 2>&1; then
     echo 'OK: 116 預設網路介面接受安全的ICMP重新導向封包' >> ${FCB_SUCCESS}
 else
     cat <<EOF >> ${FCB_FIX}
 
 FIX: 116 預設網路介面接受安全的ICMP重新導向封包
 ====== 不符合FCB規範 ======
-
+$(sysctl -a | grep net.ipv4.conf.default.secure_redirects.*)
 ====== FCB建議設定值 ======
-# 
+# 阻擋安全的ICMP重新導向封包
 ====== FCB設定方法值 ======
-#
-
+sysctl -w net.ipv4.conf.default.secure_redirects=0
 EOF
 fi
 
-echo ''
-if  >/dev/null 2>&1; then
-    echo 'OK: ' >> ${FCB_SUCCESS}
+echo '119 不回應ICMP廣播要求'
+if sysctl -a | grep net.ipv4.icmp_echo_ignore_broadcasts\ =\ 1$ >/dev/null 2>&1; then
+    echo 'OK: 119 不回應ICMP廣播要求' >> ${FCB_SUCCESS}
 else
     cat <<EOF >> ${FCB_FIX}
 
-FIX: 
+FIX: 119 不回應ICMP廣播要求
 ====== 不符合FCB規範 ======
-
+$(sysctl -a | grep net.ipv4.icmp_echo_ignore_broadcasts.*)
 ====== FCB建議設定值 ======
-# 
+# 不回應ICMP廣播要求
 ====== FCB設定方法值 ======
-#
-
+sysctl -w net.ipv4.icmp_echo_ignore_broadcasts=1
 EOF
 fi
 
-echo ''
-if  >/dev/null 2>&1; then
-    echo 'OK: ' >> ${FCB_SUCCESS}
+echo '120 忽略偽造之ICMP錯誤訊息'
+if sysctl -a | grep ^net.ipv4.icmp_ignore_bogus_error_responses\ =\ 1$ >/dev/null 2>&1; then
+    echo 'OK: 120 忽略偽造之ICMP錯誤訊息' >> ${FCB_SUCCESS}
 else
     cat <<EOF >> ${FCB_FIX}
 
-FIX: 
+FIX: 120 忽略偽造之ICMP錯誤訊息
 ====== 不符合FCB規範 ======
-
+$(sysctl -a | grep ^net.ipv4.icmp_ignore_bogus_error_responses.*)
 ====== FCB建議設定值 ======
-# 
+# 啟用記錄可疑封包功能
 ====== FCB設定方法值 ======
-#
-
+sysctl -w net.ipv4.icmp_ignore_bogus_error_responses=1
 EOF
 fi
 
-echo ''
-if  >/dev/null 2>&1; then
-    echo 'OK: ' >> ${FCB_SUCCESS}
+echo '121 所有網路介面啟用逆向路徑過濾功能'
+if sysctl -a | grep ^net.ipv4.conf.all.rp_filter\ =\ 1$ >/dev/null 2>&1; then
+    echo 'OK: 121 所有網路介面啟用逆向路徑過濾功能' >> ${FCB_SUCCESS}
 else
     cat <<EOF >> ${FCB_FIX}
 
-FIX: 
+FIX: 121 所有網路介面啟用逆向路徑過濾功能
 ====== 不符合FCB規範 ======
-
+$(sysctl -a | grep ^net.ipv4.conf.all.rp_filter.*)
 ====== FCB建議設定值 ======
-# 
+# 啟用逆向路徑過濾功能
 ====== FCB設定方法值 ======
-#
+sysctl -w net.ipv4.conf.all.rp_filter=1
+EOF
+fi
 
+echo '122 預設網路介面啟用逆向路徑過濾功能'
+if sysctl -a | grep ^net.ipv4.conf.default.rp_filter\ =\ 1$ >/dev/null 2>&1; then
+    echo 'OK: 122 預設網路介面啟用逆向路徑過濾功能' >> ${FCB_SUCCESS}
+else
+    cat <<EOF >> ${FCB_FIX}
+
+FIX: 122 預設網路介面啟用逆向路徑過濾功能
+====== 不符合FCB規範 ======
+$(sysctl -a | grep ^net.ipv4.conf.default.rp_filter.*)
+====== FCB建議設定值 ======
+# 啟用逆向路徑過濾功能
+====== FCB設定方法值 ======
+sysctl -w net.ipv4.conf.default.rp_filter=1
+EOF
+fi
+
+echo '123 TCP SYN cookies'
+if sysctl -a | grep ^net.ipv4.tcp_syncookies\ =\ 1$ >/dev/null 2>&1; then
+    echo 'OK: 123 TCP SYN cookies' >> ${FCB_SUCCESS}
+else
+    cat <<EOF >> ${FCB_FIX}
+
+FIX: 123 TCP SYN cookies
+====== 不符合FCB規範 ======
+$(sysctl -a | grep ^net.ipv4.tcp_syncookies.*)
+====== FCB建議設定值 ======
+# 啟用TCP SYN cookies功能
+====== FCB設定方法值 ======
+sysctl -w net.ipv4.tcp_syncookies=1
+EOF
+fi
+
+echo '124 所有網路介面接受IPv6路由器公告訊息'
+if sysctl -a | grep ^net.ipv6.conf.all.accept_ra\ =\ 0$ >/dev/null 2>&1; then
+    echo 'OK: 124 所有網路介面接受IPv6路由器公告訊息' >> ${FCB_SUCCESS}
+else
+    cat <<EOF >> ${FCB_FIX}
+
+FIX: 124 所有網路介面接受IPv6路由器公告訊息
+====== 不符合FCB規範 ======
+$(sysctl -a | grep ^net.ipv6.conf.all.accept_ra\ =\ .*)
+====== FCB建議設定值 ======
+# 阻擋IPv6路由器公告訊息
+====== FCB設定方法值 ======
+sysctl -w net.ipv6.conf.all.accept_ra=0
+EOF
+fi
+
+echo '125 預設網路介面接受IPv6路由器公告訊息'
+if sysctl -a | grep ^net.ipv6.conf.default.accept_ra\ =\ 0$ >/dev/null 2>&1; then
+    echo 'OK: 125 預設網路介面接受IPv6路由器公告訊息' >> ${FCB_SUCCESS}
+else
+    cat <<EOF >> ${FCB_FIX}
+
+FIX: 125 預設網路介面接受IPv6路由器公告訊息
+====== 不符合FCB規範 ======
+$(sysctl -a | grep ^net.ipv6.conf.default.accept_ra\ =.*)
+====== FCB建議設定值 ======
+# 阻擋IPv6路由器公告訊息
+====== FCB設定方法值 ======
+sysctl -w net.ipv6.conf.default.accept_ra=0
 EOF
 fi
 # ====================

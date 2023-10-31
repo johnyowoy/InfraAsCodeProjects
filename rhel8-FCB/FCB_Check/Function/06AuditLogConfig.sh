@@ -7,38 +7,38 @@ echo "133 enable auditd service"
 systemctl start auditd
 systemctl --now enable auditd
 
-    echo "134 稽核auditd服務啟動前之程序"
-    if cat /etc/default/grub | grep "^GRUB_CMDLINE_LINUX=.*audit=1.*" >/dev/null; then
-        echo "/etc/default/grub 稽核auditd=1 檢查OK!"
-    else
-        sed -i 's/\(^GRUB_CMDLINE_LINUX=".*\)\("\)/\1 audit=1\2/' /etc/default/grub
-        echo "/etc/default/grub 已「增加」稽核auditd=1"
-    fi
+echo "134 稽核auditd服務啟動前之程序"
+if cat /etc/default/grub | grep "^GRUB_CMDLINE_LINUX=.*audit=1.*" >/dev/null; then
+    echo "/etc/default/grub 稽核auditd=1 檢查OK!"
+else
+    sed -i 's/\(^GRUB_CMDLINE_LINUX=".*\)\("\)/\1 audit=1\2/' /etc/default/grub
+    echo "/etc/default/grub 已「增加」稽核auditd=1"
+fi
 
-    echo "135 稽核待辦事項數量限制"
-    if cat /etc/default/grub | grep "^GRUB_CMDLINE_LINUX=.*audit_backlog_limit=8192.*" >/dev/null; then
-        echo "/etc/default/grub 稽核待辦事項數量限制 audit_backlog_limit=8192 檢查OK"
-    else
-        sed -i 's/\(^GRUB_CMDLINE_LINUX=".*\)\("\)/\1 audit_backlog_limit=8192\2/' /etc/default/grub
-        echo "/etc/default/grub 已「增加」稽核待辦事項數量限制 audit_backlog_limit=8192"
-    fi
-    grub2-mkconfig -o /boot/grub2/grub.cfg
+echo "135 稽核待辦事項數量限制"
+if cat /etc/default/grub | grep "^GRUB_CMDLINE_LINUX=.*audit_backlog_limit=8192.*" >/dev/null; then
+    echo "/etc/default/grub 稽核待辦事項數量限制 audit_backlog_limit=8192 檢查OK"
+else
+    sed -i 's/\(^GRUB_CMDLINE_LINUX=".*\)\("\)/\1 audit_backlog_limit=8192\2/' /etc/default/grub
+    echo "/etc/default/grub 已「增加」稽核待辦事項數量限制 audit_backlog_limit=8192"
+fi
+grub2-mkconfig -o /boot/grub2/grub.cfg
 
-    echo "136 稽核處理失敗時通知系統管理者"
-    if cat /etc/aliases | grep postmaster:.*root >/dev/null; then
-        echo "稽核處理失敗時通知系統管理者 檢查OK"
-    else
-        sed 's/\(^postmaster:.*\)/postmaster\troot/' /etc/aliases
-        echo "稽核處理失敗 已設定通知系統管理者root"
-    fi
+echo "136 稽核處理失敗時通知系統管理者"
+if cat /etc/aliases | grep postmaster:.*root >/dev/null; then
+    echo "稽核處理失敗時通知系統管理者 檢查OK"
+else
+    sed 's/\(^postmaster:.*\)/postmaster\troot/' /etc/aliases
+    echo "稽核處理失敗 已設定通知系統管理者root"
+fi
 
-    echo "137 稽核日誌「檔案」擁有者與群組"
-    if stat -c "%U %G" /var/log/audit/audit.log | grep -E root.*root >/dev/null; then
-        echo "/var/log/audit/audit.log 檢查OK"
-    else
-        grep -iw log_file /etc/audit/auditd.conf | awk '{print $3}' | xargs -I {} chown root:root {}
-        echo "/var/log/audit/audit.log 已設定root"
-    fi
+echo "137 稽核日誌「檔案」擁有者與群組"
+if stat -c "%U %G" /var/log/audit/audit.log | grep -E root.*root >/dev/null; then
+    echo "/var/log/audit/audit.log 檢查OK"
+else
+    grep -iw log_file /etc/audit/auditd.conf | awk '{print $3}' | xargs -I {} chown root:root {}
+    echo "/var/log/audit/audit.log 已設定root"
+fi
 
     echo "138 稽核日誌「檔案」權限"
     if stat -c "%a" /var/log/audit/audit.log | grep 600 >/dev/null; then
