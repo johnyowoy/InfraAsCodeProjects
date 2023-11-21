@@ -1,1 +1,0 @@
-# Red Hat Linux 8 母版
