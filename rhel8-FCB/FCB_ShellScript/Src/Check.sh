@@ -63,17 +63,17 @@ source ${CheckPath}05NetworkCheck.sh 2>> ${FCB_ERROR}
 echo "=========================="
 echo "======== 日誌與稽核 ========"
 echo "=========================="
-#source ./06AuditLogCheck.sh
+source ${CheckPath}06AuditLogCheck.sh
 
 echo "=========================="
 echo "======== SElinux ========"
 echo "=========================="
-#source ./07SELinuxCheck.sh 2>> ${FCB_ERROR}
+source ${CheckPath}07SELinuxCheck.sh 2>> ${FCB_ERROR}
 
 echo "=========================="
 echo "======== cron設定 ========"
 echo "=========================="
-#source ./08CronCheck.sh 2>> ${FCB_ERROR}
+source ${CheckPath}08CronCheck.sh 2>> ${FCB_ERROR}
 
 echo "==================================="
 echo "===== Firewalld Configuration ====="

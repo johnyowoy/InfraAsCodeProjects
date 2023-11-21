@@ -1,8 +1,8 @@
-echo "TASK [類別 日誌與稽核] ****************************************" >> ${FCB_SUCCESS}
-echo "TASK [類別 日誌與稽核] ****************************************" >> ${FCB_FIX}
+echo "CHECK [類別 日誌與稽核] ****************************************" >> ${FCB_SUCCESS}
+echo "CHECK [類別 日誌與稽核] ****************************************" >> ${FCB_FIX}
 
-echo "TASK [Print Message] ****************************************" >> ${FCB_SUCCESS}
-echo "TASK [Print Message] ****************************************" >> ${FCB_FIX}
+echo "CHECK [Print Message] ****************************************" >> ${FCB_SUCCESS}
+echo "CHECK [Print Message] ****************************************" >> ${FCB_FIX}
 
 echo "132 auditd套件"
 if rpm -q audit >/dev/null 2>&1 && rpm -q audit-libs >/dev/null 2>&1; then

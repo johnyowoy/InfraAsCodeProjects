@@ -57,17 +57,23 @@ source ${TaskPath}05NetworkTask.sh 2>> ${FCB_ERROR}
 echo "=========================="
 echo "======== 日誌與稽核 ========"
 echo "=========================="
-#source ./06AuditLogTask.sh
+source ${TaskPath}06AuditLogTask.sh
 
 echo "=========================="
 echo "======== SElinux ========"
 echo "=========================="
-#source ./07SELinuxTask.sh 2>> ${FCB_ERROR}
+source ${TaskPath}07SELinuxTask.sh 2>> ${FCB_ERROR}
 
 echo "=========================="
 echo "======== cron設定 ========"
 echo "=========================="
-#source ./08CronTask.sh 2>> ${FCB_ERROR}
+source ${TaskPath}08CronTask.sh 2>> ${FCB_ERROR}
+
+echo "=========================="
+echo "======== 帳號與存取控制 ========"
+echo "=========================="
+source ${TaskPath}09AccessTask.sh 2>> ${FCB_ERROR}
+
 
 echo "==================================="
 echo "===== Firewalld Configuration ====="
