@@ -820,7 +820,7 @@ else
 fi
 
 echo '71 程式庫檔案擁有群組'
-files=$(find -L /lib /lib64 /usr/lib64 ! -group root -exec ls -al {} \;)
+files=$(find -L /lib /lib64 /usr/lib /usr/lib64 ! -group root -exec ls -la {} \;)
 if [ -n "$files" ]; then
     cat <<EOF >> ${FCB_FIX}
 
