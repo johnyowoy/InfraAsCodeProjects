@@ -82,6 +82,7 @@ source ${TaskPath}10FirewalldTask.sh 2>> ${FCB_ERROR}
 echo "===================================="
 echo "======== SSH Configuration ========="
 echo "===================================="
+source ${TaskPath}11SSHTask.sh 2>> ${FCB_ERROR}
 
 # 檢查錯誤檔案是否有內容
 if [[ -s ${FCB_ERROR} ]]; then
