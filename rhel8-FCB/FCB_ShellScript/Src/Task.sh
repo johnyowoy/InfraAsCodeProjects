@@ -74,19 +74,10 @@ echo "======== 帳號與存取控制 ========"
 echo "=========================="
 source ${TaskPath}09AccessTask.sh 2>> ${FCB_ERROR}
 
-
 echo "==================================="
 echo "===== Firewalld Configuration ====="
 echo "==================================="
-
-# ====================================
-# === Change firewalld or ntfables ===
-# ====================================
-
-
-echo "==================================="
-echo "===== Nftables Services Stop ======"
-echo "==================================="
+source ${TaskPath}10FirewalldTask.sh 2>> ${FCB_ERROR}
 
 echo "===================================="
 echo "======== SSH Configuration ========="
