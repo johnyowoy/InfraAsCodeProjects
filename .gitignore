@@ -1,0 +1,5 @@
+# 檔案名稱 .gitignore
+
+.DS_Store
+# 忽略所有附檔名是 .tmp 的檔案
+*.tmp
