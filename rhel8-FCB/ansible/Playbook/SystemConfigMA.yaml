@@ -1,0 +1,196 @@
+- name: 系統設定與維護
+  hosts: FCB_TEST
+  vars:
+    sudoLogfilePath: /var/log/sudo.log
+  tasks:
+    - name: Print message
+      ansible.builtin.debug:
+        msg:
+        - "GPG簽章驗證"
+    - name: TCBFCB-01-008-0032-01
+      ansible.builtin.replace:
+        path: /etc/yum.conf
+        regexp: '^(gpgcheck=).*'
+        replace: 'gpgcheck=1'
+    - name: TCBFCB-01-008-0032-02
+      ansible.builtin.replace:
+        path: "{{ item }}"
+        regexp: '^(gpgcheck)\ (=).*'
+        replace: 'gpgcheck=1'
+      with_fileglob:
+        - "/etc/yum.repos.d/*.repo"
+    - name: Print message
+      ansible.builtin.debug:
+        msg:
+        - "sudo套件"
+        - "aide套件"
+    - name: TCBFCB-01-008-0033
+      ansible.builtin.dnf:
+        name:
+          - sudo
+          - aide
+        state: latest
+    - name: Print message
+      ansible.builtin.debug:
+        msg:
+        - "設定sudo指令使用pty"
+    - name: TCBFCB-01-008-0034
+      ansible.builtin.lineinfile:
+        path: /etc/sudoers
+        regexp: '^Defaults\ use_pty$'
+        line: Defaults use_pty
+    - name: Print message
+      ansible.builtin.debug:
+        msg:
+        - "sudo自定義日誌檔案"
+    - name: TCBFCB-01-008-0035
+      ansible.builtin.lineinfile:
+        path: /etc/sudoers
+        regexp: '^Defaults\ logfile=.*'
+        line: Defaults logfile="{{ sudoLogfilePath }}"
+    - name: Change file ownership, group and permissions
+      ansible.builtin.file:
+        path: "{{ sudoLogfilePath }}"
+        owner: root
+        group: root
+        mode: '0600'
+    - name: TCBFCB-01-008-0036
+      ansible.builtin.shell: |
+        aide --check | grep "Couldn't open file /var/lib/aide/aide.db.gz for reading"
+        if [ $? -eq 0 ]; then
+            aide --init
+            mv /var/lib/aide/aide.db.new.gz /var/lib/aide/aide.db.gz
+            echo "AIDE initialization completed."
+            exit 0
+        fi
+        echo "$(aide --check)" && exit 0
+      args:
+        executable: /bin/bash
+    - name: Print message
+      ansible.builtin.debug:
+        msg:
+        - "定期檢查檔案系統完整性"
+    - name: TCBFCB-01-008-0037
+      ansible.builtin.cron:
+        name: "aide check"
+        minute: "0"
+        hour: "5"
+        job: "/usr/sbin/aide --check"
+    - name: Print message
+      ansible.builtin.debug:
+        msg:
+        - "開機載入程式設定檔之所有權與權限"
+    - name: TWGCB-01-008-0038 && TWGCB-01-008-0039
+      ansible.builtin.file:
+        path: "/boot/grub2/grub.cfg"
+        owner: root
+        group: root
+        mode: '0600'
+    - name: TWGCB-01-008-0038 && TWGCB-01-008-0039
+      ansible.builtin.file:
+        path: "/boot/grub2/grubenv"
+        owner: root
+        group: root
+        mode: '0600'
+    - name: Print message
+      ansible.builtin.debug:
+        msg:
+        - "單一使用者模式身分驗證"
+    - name: TWGCB-01-008-0041
+      ansible.builtin.replace:
+        path: /usr/lib/systemd/system/rescue.service
+        regexp: '^(ExecStart=).*'
+        replace: 'ExecStart=-/usr/lib/systemd/systemd-sulogin-shell emergency'
+    - name: Print message
+      ansible.builtin.debug:
+        msg:
+        - "核心傾印功能"
+    - name: TWGCB-01-008-0042-01
+      ansible.builtin.lineinfile:
+        path: /etc/security/limits.conf
+        regexp: '^hard\ core\ 0$'
+        line: hard core 0
+    - name: TWGCB-01-008-0042-02
+      ansible.posix.sysctl:
+        name: fs.suid_dumpable
+        value: '0'
+        sysctl_set: true
+    - name: TWGCB-01-008-0042-03
+      ansible.builtin.replace:
+        path: /etc/systemd/coredump.conf
+        regexp: '.*(Storage=).*'
+        replace: 'Storage=none'
+    - name: TWGCB-01-008-0042-04
+      ansible.builtin.replace:
+        path: /etc/systemd/coredump.conf
+        regexp: '.*(ProcessSizeMax=).*'
+        replace: 'ProcessSizeMax=0'
+    - name: Print message
+      ansible.builtin.debug:
+        msg:
+        - "記憶體位址空間配置隨機載入"
+    - name: TWGCB-01-008-0043
+      ansible.posix.sysctl:
+        name: kernel.randomize_va_space
+        value: '2'
+        sysctl_set: true
+    - name: Print message
+      ansible.builtin.debug:
+        msg:
+        - "檔案所有權&檔案權限"
+        - "/etc/passwd"
+        - "/etc/shadow"
+        - "/etc/group"
+        - "/etc/gshadow"
+        - "/etc/passwd-"
+        - "/etc/shadow-"
+        - "/etc/group-"
+        - "/etc/gshadow-"
+    - name: TWGCB-01-008-0045 & TWGCB-01-008-0046
+      ansible.builtin.file:
+        path: /etc/passwd
+        owner: root
+        group: root
+        mode: 0644
+    - name: TWGCB-01-008-0047 & TWGCB-01-008-0048
+      ansible.builtin.file:
+        path: /etc/shadow
+        owner: root
+        group: root
+        mode: 000
+    - name: TWGCB-01-008-0049 & TWGCB-01-008-0050
+      ansible.builtin.file:
+        path: /etc/group
+        owner: root
+        group: root
+        mode: 0644
+    - name: TWGCB-01-008-0051 & TWGCB-01-008-0052
+      ansible.builtin.file:
+        path: /etc/gshadow
+        owner: root
+        group: root
+        mode: 000
+    - name: TWGCB-01-008-0053 & TWGCB-01-008-0054
+      ansible.builtin.file:
+        path: /etc/passwd-
+        owner: root
+        group: root
+        mode: 0644
+    - name: TWGCB-01-008-0055 & TWGCB-01-008-0056
+      ansible.builtin.file:
+        path: /etc/passwd-
+        owner: root
+        group: root
+        mode: 0644
+    - name: TWGCB-01-008-0057 & TWGCB-01-008-0058
+      ansible.builtin.file:
+        path: /etc/group-
+        owner: root
+        group: root
+        mode: 0644
+    - name: TWGCB-01-008-0059 & TWGCB-01-008-0060
+      ansible.builtin.file:
+        path: /etc/gshadow-
+        owner: root
+        group: root
+        mode: 000

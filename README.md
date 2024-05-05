@@ -1,1 +1,3 @@
-# Linux Custom Install File
+# Shell Script Note
+## ShellScript資料夾
+基本設定

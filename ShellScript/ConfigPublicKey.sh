@@ -1,3 +1,4 @@
+# Set User Public Key
 # 1. 建立 ~/.ssh 檔案，注意權限需要為 700
 if [ -d "~/.ssh" ]; then
     echo "Folder .ssh does exists"
@@ -12,7 +13,7 @@ else
     echo ".ssh 已設定700"
 fi
 cd ~
-pubkey="JINHAU-Mac.pub"
+read -p "請輸入您的Public Key (EX: xxx.pub): " pubkey
 if [ -f "$pubkey" ]; then
     mv $pubkey ~/.ssh
     cd .ssh

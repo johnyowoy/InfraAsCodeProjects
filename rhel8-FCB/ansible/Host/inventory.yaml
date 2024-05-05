@@ -1,0 +1,29 @@
+TEST:
+  hosts:
+    node1:
+      ansible_host: node1
+    node2:
+      ansible_host: node2
+    node3:
+      ansible_host: node3
+    node4:
+      ansible_host: node4
+    node5:
+      ansible_host: node5
+FCB_PROD:
+  hosts:
+    node1:
+      ansible_host: node1
+    node2:
+      ansible_host: node2
+    node3:
+      ansible_host: node3
+FCB_TEST:
+  hosts:
+    node4:
+      ansible_host: node4
+    node5:
+      ansible_host: node5
+datacenter:
+  children:
+    TEST:
