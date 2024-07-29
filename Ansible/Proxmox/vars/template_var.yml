@@ -1,0 +1,7 @@
+vm:
+  k8s:
+    ostype: 'l26'
+    cores: '2'
+    memory: '4096'
+    boot: 'order=scsi0'
+    

@@ -1,0 +1,13 @@
+- name: StartVM
+  hosts: proxmox
+  vars_files:
+    - ../vars/proxmox/basic_var.yml
+  tasks:
+    - name: StartUp TESTPVEMGT01
+      community.general.proxmox_kvm:
+        api_host: "{{ proxmox.pve01.host }}"
+        api_user: "{{ proxmox.pve01.user }}"
+        api_password: "{{ proxmox.pve01.password }}"
+        node: pve
+        name: 'TESTPVEMGT01'
+        state: started

@@ -1,0 +1,15 @@
+proxmox:
+  hosts:
+    pve01:
+      ansible_host: PRODPVEHWM01
+k8s:
+  hosts:
+    k8s-master01:
+      ansible_hosts:
+    k8s-workernode01:
+      ansible_hosts:
+    k8s-workernode02:
+      ansible_hosts:
+datacenter:
+  children:
+    proxmox:

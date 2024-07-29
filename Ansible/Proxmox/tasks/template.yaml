@@ -1,0 +1,26 @@
+- name: Template
+  hosts: proxmox
+  vars_files:
+    - ../vars/proxmox/basic_var.yml
+  tasks:
+    - name: Create new VM
+      community.general.proxmox_kvm:
+        api_host: "{{ proxmox.pve01.host }}"
+        api_user: "{{ proxmox.pve01.user }}"
+        api_password: "{{ proxmox.pve01.password }}"
+        node: pve
+        name: 'TESTPVEK8S02'
+        ostype: 'l26'
+        cores: 2
+        memory: 4096
+        boot: 'order=scsi0;ide2;net0'
+        scsihw: 'virtio-scsi-single'
+        scsi:
+          scsi0: 'local-lvm:100'
+          scsi1: 'local-lvm:100'
+        net:
+          net0: 'virtio,bridge=vmbr0,firewall=1'
+        ide:
+          ide2: 'local:iso/Rocky-8.8-x86_64-dvd1.iso,media=cdrom'
+        
+      
